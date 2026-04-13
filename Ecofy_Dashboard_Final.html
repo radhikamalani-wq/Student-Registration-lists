@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ecofy Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;background:#f1f5f1;color:#1a1a1a;font-size:13px;min-height:100vh}
+
+/* ── TOP BAR ── */
+.topbar{background:#1b5e20;padding:0 20px;height:52px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:300;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+.logo{color:#fff;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.logo-leaf{background:#4caf50;border-radius:7px;padding:4px 8px;font-size:13px}
+.synced{background:rgba(255,255,255,.15);color:#c8e6c9;font-size:10px;padding:3px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.2)}
+.src-row{display:flex;gap:7px;margin-left:auto}
+.src-chip{display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.1);color:#e8f5e9;font-size:11px;padding:3px 9px;border-radius:10px}
+.src-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+
+/* ── FILTER BAR ── */
+.filterbar{background:#fff;border-bottom:2px solid #c8e6c9;padding:8px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;position:sticky;top:52px;z-index:200}
+.fl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#5a7560;white-space:nowrap}
+.pbwrap{display:flex;gap:3px}
+.pb{padding:5px 11px;font-size:12px;border:1px solid #c8e6c9;border-radius:5px;cursor:pointer;background:#f7fdf7;color:#444;transition:all .12s;font-weight:600}
+.pb.on{background:#2e7d32;color:#fff;border-color:#2e7d32}
+.pb:hover:not(.on){background:#e8f5e9}
+select{font-size:12px;padding:5px 9px;border:1px solid #c8e6c9;border-radius:5px;background:#fff;color:#333;min-width:130px;cursor:pointer}
+select:focus{outline:none;border-color:#2e7d32}
+.custom-range{display:none;gap:6px;align-items:center}
+.custom-range.show{display:flex}
+.custom-range input{padding:4px 8px;border:1px solid #c8e6c9;border-radius:5px;font-size:12px}
+.fsumm{margin-left:auto;font-size:11px;color:#aaa;font-style:italic;white-space:nowrap}
+
+/* ── TAB BAR (mirrors Excel sheet tabs) ── */
+.tabbar{background:#fff;border-bottom:3px solid #e8f5e9;padding:0 20px;display:flex;overflow-x:auto;gap:2px;position:sticky;top:102px;z-index:190}
+.tabbar::-webkit-scrollbar{height:3px}
+.tabbar::-webkit-scrollbar-thumb{background:#c8e6c9;border-radius:2px}
+.xtab{padding:10px 16px;font-size:12px;font-weight:700;cursor:pointer;color:#888;border-bottom:3px solid transparent;background:none;border-top:none;border-left:none;border-right:none;margin-bottom:-3px;white-space:nowrap;letter-spacing:.01em;transition:all .12s}
+.xtab:hover{color:#2e7d32;background:#f7fdf7}
+.xtab.on{color:#1b5e20;border-bottom-color:#2e7d32;background:#f7fdf7}
+.tab-icon{font-size:11px;margin-right:4px;opacity:.7}
+
+/* ── MAIN LAYOUT ── */
+.main{padding:16px 20px;max-width:1480px;margin:0 auto}
+.panel{display:none}.panel.on{display:block}
+
+/* ── KPI CARDS ── */
+.krow{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:14px}
+.krow-4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.krow-3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.kcard{background:#fff;border-radius:10px;padding:14px 16px;border:1px solid #e8e8e8;border-top:3px solid var(--kc,#2e7d32);transition:transform .12s,box-shadow .12s}
+.kcard:hover{transform:translateY(-2px);box-shadow:0 4px 14px rgba(0,0,0,.08)}
+.klbl{font-size:10px;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;font-weight:700}
+.kval{font-size:22px;font-weight:700;color:#1a1a1a;line-height:1.1;margin-bottom:4px}
+.kch{font-size:11px;margin-bottom:2px;font-weight:600}
+.up{color:#2e7d32}.dn{color:#c62828}.neu{color:#888}
+.ksrc{font-size:9px;color:#ccc}
+
+/* ── GRID LAYOUTS ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.g2l{display:grid;grid-template-columns:1.15fr .85fr;gap:14px;margin-bottom:14px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px}
+.g3l{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:14px;margin-bottom:14px}
+.g1{margin-bottom:14px}
+
+/* ── CARD ── */
+.card{background:#fff;border-radius:10px;padding:16px;border:1px solid #e8e8e8}
+.card-h{font-size:13px;font-weight:700;color:#1a1a1a;margin-bottom:3px}
+.card-s{font-size:10px;color:#bbb;margin-bottom:12px}
+.sec{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#aaa;padding-bottom:7px;border-bottom:1px solid #f0f0f0;margin-bottom:10px}
+
+/* ── CHART WRAPPERS ── */
+.cw{position:relative;width:100%;height:230px}
+.cw-sm{position:relative;width:100%;height:185px}
+.cw-lg{position:relative;width:100%;height:270px}
+.cw-xl{position:relative;width:100%;height:320px}
+.leg{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px;font-size:10px;color:#777}
+.legi{display:flex;align-items:center;gap:4px}
+.legsq{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+
+/* ── FUNNEL ── */
+.frow{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.flab{font-size:11px;color:#777;width:155px;text-align:right;flex-shrink:0;font-weight:500}
+.ftrack{flex:1;background:#f5f5f5;border-radius:4px;height:28px;overflow:hidden}
+.fbar{height:100%;border-radius:4px;display:flex;align-items:center;padding-left:10px;font-size:11px;font-weight:700;color:#fff;min-width:40px;transition:width .7s}
+.fpct{font-size:10px;color:#bbb;width:36px;text-align:right;flex-shrink:0}
+.fsrc2{font-size:9px;font-weight:700;width:65px;flex-shrink:0}
+
+/* ── TABLE ROWS (platform breakdown etc) ── */
+.trow{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f5f5f5;font-size:11px}
+.trow:last-child{border-bottom:none}
+.tname{display:flex;align-items:center;gap:7px;font-weight:700;min-width:90px}
+.tdot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.mbar-w{width:80px;background:#f5f5f5;border-radius:3px;height:6px;margin:0 8px;flex-shrink:0}
+.mbar-i{height:6px;border-radius:3px}
+.orow{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f5f5f5;font-size:11px}
+.orow:last-child{border-bottom:none}
+.obadge{font-size:9px;padding:3px 8px;border-radius:3px;font-weight:700}
+.wrow{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #f5f5f5;font-size:11px}
+.wrow:last-child{border-bottom:none}
+
+/* ── DATA TABLES ── */
+.dtwrap{overflow-x:auto;max-height:380px;overflow-y:auto;border-radius:6px;border:1px solid #f0f0f0}
+.dt{width:100%;border-collapse:collapse;font-size:11px}
+.dt th{background:#f8faf8;padding:8px 10px;text-align:left;font-size:10px;color:#777;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid #e8e8e8;font-weight:700;white-space:nowrap;position:sticky;top:0}
+.dt td{padding:7px 10px;border-bottom:1px solid #f5f5f5;color:#333;white-space:nowrap}
+.dt tr:hover td{background:#f7fdf7}
+.dt tr:last-child td{border-bottom:none}
+
+/* ── BADGES ── */
+.pfb{background:#e3f2fd;color:#0d47a1;font-size:9px;padding:2px 7px;border-radius:3px;font-weight:700}
+.pig{background:#fce4ec;color:#880e4f;font-size:9px;padding:2px 7px;border-radius:3px;font-weight:700}
+.pli{background:#e8eaf6;color:#1a237e;font-size:9px;padding:2px 7px;border-radius:3px;font-weight:700}
+.sg{background:#e8f5e9;color:#1b5e20;font-size:9px;padding:2px 7px;border-radius:3px;font-weight:700}
+.sw{background:#fff3e0;color:#e65100;font-size:9px;padding:2px 7px;border-radius:3px;font-weight:700}
+.sr{background:#fce4ec;color:#c62828;font-size:9px;padding:2px 7px;border-radius:3px;font-weight:700}
+.qtag{font-size:9px;padding:2px 7px;border-radius:3px;font-weight:700}
+
+/* ── INSIGHTS ── */
+.icard{background:#fff;border-radius:10px;padding:16px;border:1px solid #e8e8e8;margin-bottom:14px}
+.irow{display:flex;align-items:flex-start;gap:9px;padding:7px 0;border-bottom:1px solid #f5f5f5;font-size:12px;color:#555;line-height:1.5}
+.irow:last-child{border-bottom:none}
+.iico{width:21px;height:21px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px}
+.ig{background:#e8f5e9;color:#1b5e20}.ia{background:#fff3e0;color:#e65100}.ib{background:#e3f2fd;color:#0d47a1}
+
+/* ── INFLUENCER CARDS ── */
+.inf-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-bottom:14px}
+.inf-card{background:#fff;border-radius:10px;border:1px solid #e8e8e8;padding:14px;transition:box-shadow .12s}
+.inf-card:hover{box-shadow:0 4px 14px rgba(0,0,0,.08)}
+.inf-name{font-size:13px;font-weight:700;color:#1b5e20;margin-bottom:3px}
+.inf-date{font-size:10px;color:#bbb;margin-bottom:10px}
+.inf-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f5f5f5;font-size:11px}
+.inf-row:last-child{border-bottom:none}
+.inf-label{color:#888}
+.inf-val{font-weight:700;color:#1a1a1a}
+
+/* ── WEBSITE CHANNEL ROWS ── */
+.ch-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #f5f5f5;font-size:11px}
+.ch-row:last-child{border-bottom:none}
+.ch-name{width:160px;font-weight:600;color:#333;flex-shrink:0}
+.ch-bar-w{flex:1;background:#f5f5f5;border-radius:3px;height:8px}
+.ch-bar-i{height:8px;border-radius:3px;background:#2e7d32}
+.ch-val{width:60px;text-align:right;font-weight:700;color:#1b5e20;flex-shrink:0}
+.ch-rate{width:50px;text-align:right;color:#888;flex-shrink:0}
+
+/* ── RESPONSIVE ── */
+@media(max-width:1100px){.krow{grid-template-columns:repeat(3,1fr)}.g2l,.g2,.g3,.g3l{grid-template-columns:1fr}}
+@media(max-width:680px){.krow,.krow-4{grid-template-columns:repeat(2,1fr)}.krow-3{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<!-- inject data from Apps Script server -->
+<!-- Data injected as standalone HTML -->
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="logo"><span class="logo-leaf">🌿</span>Ecofy <span style="font-weight:400;opacity:.6;font-size:13px;margin-left:3px">Marketing Dashboard</span></div>
+  <span class="synced" id="synced">✓ Live Data · Google Sheets</span>
+  <div class="src-row">
+    <span class="src-chip"><span class="src-dot" style="background:#64b5f6"></span>Facebook</span>
+    <span class="src-chip"><span class="src-dot" style="background:#f48fb1"></span>Instagram</span>
+    <span class="src-chip"><span class="src-dot" style="background:#90caf9"></span>LinkedIn</span>
+    <span class="src-chip"><span class="src-dot" style="background:#a5d6a7"></span>Organic</span>
+  </div>
+</div>
+
+<!-- FILTER BAR -->
+<div class="filterbar">
+  <span class="fl">Period:</span>
+  <div class="pbwrap">
+    <button class="pb" onclick="setP('week',this)">This Week</button>
+    <button class="pb on" onclick="setP('month',this)">This Month</button>
+    <button class="pb" onclick="setP('quarter',this)">This Quarter</button>
+    <button class="pb" onclick="setP('all',this)">All Time</button>
+    <button class="pb" onclick="setP('custom',this)">Custom</button>
+  </div>
+  <div class="custom-range" id="crange">
+    <span class="fl">From:</span><input type="date" id="df" onchange="applyF()">
+    <span class="fl">To:</span><input type="date" id="dt2" onchange="applyF()">
+  </div>
+  <span class="fl" style="margin-left:6px">Month:</span>
+  <select id="fM" onchange="applyF()">
+    <option value="all">All Months</option>
+    <option value="January" selected>January 2026</option>
+    <option value="February">February 2026</option>
+    <option value="March">March 2026</option>
+    <option value="October">October 2025</option>
+    <option value="November">November 2025</option>
+    <option value="December">December 2025</option>
+    <option value="July">July 2025</option>
+    <option value="August">August 2025</option>
+    <option value="September">September 2025</option>
+  </select>
+  <span class="fl">Quarter:</span>
+  <select id="fQ" onchange="applyF()">
+    <option value="all">All Quarters</option>
+    <option value="Q3">Q3 Jul–Sep 25</option>
+    <option value="Q4">Q4 Oct–Dec 25</option>
+    <option value="Q1">Q1 Jan–Mar 26</option>
+  </select>
+  <span class="fl">Platform:</span>
+  <select id="fP" onchange="applyF()">
+    <option value="all">All Platforms</option>
+    <option value="FB & IG">FB & IG</option>
+    <option value="IG">Instagram</option>
+    <option value="LinkedIn">LinkedIn</option>
+  </select>
+  <span class="fl">Week:</span>
+  <select id="fW" onchange="applyF()">
+    <option value="all">All Weeks</option>
+    <option value="Week 1">Week 1</option>
+    <option value="Week 2">Week 2</option>
+    <option value="Week 3">Week 3</option>
+    <option value="Week 4">Week 4</option>
+  </select>
+  <span class="fsumm" id="fsumm">January 2026 · All Platforms</span>
+</div>
+
+<!-- TAB BAR — one tab per Excel sheet -->
+<div class="tabbar">
+  <button class="xtab on" onclick="showTab('overview',this)">📊 Overview</button>
+  <button class="xtab" onclick="showTab('data_master',this)">📋 Data Master</button>
+  <button class="xtab" onclick="showTab('paid_meta',this)">💰 Paid – Meta</button>
+  <button class="xtab" onclick="showTab('paid_ig',this)">📸 Paid – Instagram</button>
+  <button class="xtab" onclick="showTab('paid_li',this)">💼 Paid – LinkedIn</button>
+  <button class="xtab" onclick="showTab('organic',this)">🌱 Organic Data</button>
+  <button class="xtab" onclick="showTab('website',this)">🌐 Website Data</button>
+  <button class="xtab" onclick="showTab('linkedin_analysis',this)">🔗 LinkedIn Analysis</button>
+  <button class="xtab" onclick="showTab('influencers',this)">⭐ Influencers</button>
+  <button class="xtab" onclick="showTab('kpi',this)">🎯 KPI</button>
+</div>
+
+<!-- ═══════════════ OVERVIEW ═══════════════ -->
+<div id="p-overview" class="panel on"><div class="main">
+  <div class="krow-3" id="ov-kpis"></div>
+  <div id="ov-compare-section" style="margin-bottom:14px"></div>
+  <div class="g2l">
+    <div class="card">
+      <div class="card-h">Conversion funnel</div>
+      <div class="card-s" id="ov-fsub">January 2026 · All platforms</div>
+      <div id="ov-funnel"></div>
+    </div>
+    <div class="card">
+      <div class="card-h">Spend vs results — weekly</div>
+      <div class="card-s">From Data Master sheet</div>
+      <div class="leg">
+        <span class="legi"><span class="legsq" style="background:#1b5e20"></span>Spend (₹)</span>
+        <span class="legi"><span class="legsq" style="background:#e65100"></span>Results</span>
+        <span class="legi"><span class="legsq" style="background:#0a66c2"></span>Impressions (K)</span>
+      </div>
+      <div class="cw"><canvas id="ov-trend"></canvas></div>
+    </div>
+  </div>
+  <div class="g3">
+    <div class="card"><div class="sec">Platform breakdown</div><div id="ov-plat"></div></div>
+    <div class="card"><div class="sec">Campaign breakdown</div><div id="ov-camp"></div></div>
+    <div class="card"><div class="sec">Week-by-week spend</div><div id="ov-weeks"></div></div>
+  </div>
+  <div class="g2">
+    <div class="card"><div class="card-h">Impressions by platform & week</div><div class="cw"><canvas id="ov-impr"></canvas></div></div>
+    <div class="card"><div class="card-h">Results by platform & week</div><div class="cw"><canvas id="ov-res"></canvas></div></div>
+  </div>
+  <div class="icard"><div class="sec">Key insights</div><div id="ov-insights"></div></div>
+</div></div>
+
+<!-- ═══════════════ DATA MASTER ═══════════════ -->
+<div id="p-data_master" class="panel"><div class="main">
+  <div class="krow-3" id="dm-kpis"></div>
+  <div class="g2">
+    <div class="card"><div class="card-h">Spend by Platform (weekly)</div><div class="cw-lg"><canvas id="dm-spend"></canvas></div></div>
+    <div class="card"><div class="card-h">Results by Platform (weekly)</div><div class="cw-lg"><canvas id="dm-results"></canvas></div></div>
+  </div>
+  <div class="card g1">
+    <div class="card-h">Full Data Master table</div>
+    <div class="card-s" id="dm-sub">Filtered from DATA_MASTER sheet</div>
+    <div class="dtwrap"><table class="dt"><thead><tr id="dm-thead"></tr></thead><tbody id="dm-tbody"></tbody></table></div>
+  </div>
+</div></div>
+
+<!-- ═══════════════ PAID META ═══════════════ -->
+<div id="p-paid_meta" class="panel"><div class="main">
+  <div class="krow-4" id="pm-kpis"></div>
+  <div class="g2">
+    <div class="card"><div class="card-h">Daily spend — Meta Website Traffic</div><div class="cw"><canvas id="pm-spend"></canvas></div></div>
+    <div class="card"><div class="card-h">CTR & Landing Page Views daily</div><div class="cw"><canvas id="pm-ctr"></canvas></div></div>
+  </div>
+  <div class="card g1">
+    <div class="card-h">Meta Website Traffic — daily data</div>
+    <div class="dtwrap"><table class="dt"><thead><tr id="pm-thead"></tr></thead><tbody id="pm-tbody"></tbody></table></div>
+  </div>
+</div></div>
+
+<!-- ═══════════════ PAID INSTAGRAM ═══════════════ -->
+<div id="p-paid_ig" class="panel"><div class="main">
+  <div class="krow-4" id="pi-kpis"></div>
+  <div class="g2">
+    <div class="card"><div class="card-h">Daily engagement — Instagram</div><div class="cw"><canvas id="pi-eng"></canvas></div></div>
+    <div class="card"><div class="card-h">Followers gained daily</div><div class="cw"><canvas id="pi-fol"></canvas></div></div>
+  </div>
+  <div class="card g1">
+    <div class="card-h">Instagram Paid — daily data</div>
+    <div class="dtwrap"><table class="dt"><thead><tr id="pi-thead"></tr></thead><tbody id="pi-tbody"></tbody></table></div>
+  </div>
+</div></div>
+
+<!-- ═══════════════ PAID LINKEDIN ═══════════════ -->
+<div id="p-paid_li" class="panel"><div class="main">
+  <div class="krow-4" id="pl-kpis"></div>
+  <div class="g2">
+    <div class="card"><div class="card-h">Daily impressions — LinkedIn</div><div class="cw"><canvas id="pl-impr"></canvas></div></div>
+    <div class="card"><div class="card-h">Engagement & followers daily</div><div class="cw"><canvas id="pl-eng"></canvas></div></div>
+  </div>
+  <div class="card g1">
+    <div class="card-h">LinkedIn Paid — daily data</div>
+    <div class="dtwrap"><table class="dt"><thead><tr id="pl-thead"></tr></thead><tbody id="pl-tbody"></tbody></table></div>
+  </div>
+</div></div>
+
+<!-- ═══════════════ ORGANIC DATA ═══════════════ -->
+<div id="p-organic" class="panel"><div class="main">
+  <div class="krow-3" id="org-kpis"></div>
+  <div class="g3">
+    <div class="card"><div class="card-h">Facebook organic daily</div><div class="cw"><canvas id="org-fb"></canvas></div></div>
+    <div class="card"><div class="card-h">Instagram organic daily</div><div class="cw"><canvas id="org-ig"></canvas></div></div>
+    <div class="card"><div class="card-h">LinkedIn organic daily</div><div class="cw"><canvas id="org-li"></canvas></div></div>
+  </div>
+  <div class="g2">
+    <div class="card"><div class="card-h">ER comparison by platform</div><div class="cw-sm"><canvas id="org-er"></canvas></div></div>
+    <div class="card"><div class="card-h">Followers gained by platform</div><div class="cw-sm"><canvas id="org-fol"></canvas></div></div>
+  </div>
+  <div class="card g1">
+    <div class="card-h">Organic Data — all platforms daily</div>
+    <div class="dtwrap"><table class="dt" id="org-table">
+      <thead><tr><th>Date</th><th>FB Impressions</th><th>FB Reach</th><th>FB ER</th><th>FB Followers</th><th>IG Impressions</th><th>IG Reach</th><th>IG ER</th><th>IG Followers</th><th>LI Impressions</th><th>LI Engagement</th><th>LI ER</th><th>LI Followers</th></tr></thead>
+      <tbody id="org-tbody"></tbody>
+    </table></div>
+  </div>
+</div></div>
+
+<!-- ═══════════════ WEBSITE DATA ═══════════════ -->
+<div id="p-website" class="panel"><div class="main">
+  <div class="krow-4" id="web-kpis"></div>
+  <div class="g2">
+    <div class="card"><div class="card-h">Sessions by channel</div><div class="cw-lg"><canvas id="web-sess"></canvas></div></div>
+    <div class="card"><div class="card-h">Engagement rate by channel</div><div class="cw-lg"><canvas id="web-er"></canvas></div></div>
+  </div>
+  <div class="card g1">
+    <div class="card-h">Channel performance — GA4 data</div>
+    <div class="card-s">Session primary channel group</div>
+    <div id="web-channels"></div>
+  </div>
+</div></div>
+
+<!-- ═══════════════ LINKEDIN ANALYSIS ═══════════════ -->
+<div id="p-linkedin_analysis" class="panel"><div class="main">
+  <div class="krow-4" id="la-kpis"></div>
+  <div class="g2">
+    <div class="card"><div class="card-h">Campaign reach by type</div><div class="cw"><canvas id="la-reach"></canvas></div></div>
+    <div class="card"><div class="card-h">Format breakdown</div><div class="cw"><canvas id="la-fmt"></canvas></div></div>
+  </div>
+  <div class="card g1">
+    <div class="card-h">LinkedIn posts — performance table</div>
+    <div class="dtwrap"><table class="dt"><thead><tr><th>Type</th><th>Campaign Type</th><th>Format</th><th>Campaign Reach</th><th>Post Link</th></tr></thead><tbody id="la-tbody"></tbody></table></div>
+  </div>
+</div></div>
+
+<!-- ═══════════════ INFLUENCERS ═══════════════ -->
+<div id="p-influencers" class="panel"><div class="main">
+  <div class="krow-4" id="inf-kpis"></div>
+  <div class="g2">
+    <div class="card"><div class="card-h">Planned vs achieved views</div><div class="cw"><canvas id="inf-views"></canvas></div></div>
+    <div class="card"><div class="card-h">Paid spend by influencer</div><div class="cw"><canvas id="inf-spend"></canvas></div></div>
+  </div>
+  <div class="inf-grid" id="inf-cards"></div>
+</div></div>
+
+<!-- ═══════════════ KPI ═══════════════ -->
+<div id="p-kpi" class="panel"><div class="main">
+  <div class="krow-3" id="kpi-cards"></div>
+  <div class="g2">
+    <div class="card"><div class="card-h">KPI overview</div><div class="cw-lg"><canvas id="kpi-chart"></canvas></div></div>
+    <div class="card">
+      <div class="card-h">KPI scorecard</div>
+      <div class="card-s">From KPI sheet</div>
+      <div class="dtwrap"><table class="dt"><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody id="kpi-tbody"></tbody></table></div>
+    </div>
+  </div>
+</div></div>
+
+<div style="text-align:center;padding:20px;color:#ccc;font-size:10px">Ecofy Digital Marketing Dashboard · Powered by Google Sheets · Confidential</div>
+
+<script>
+// ══ DATA FROM SERVER ══════════════════════════════════════════════
+var D = {"dataMaster": [{"Week": "Week 1", "Month": "January", "Platform": "FB & IG", "Campaign": "Website Traffic", "Spend": 12218.47, "Impressions": 1434659, "Clicks": 21396.0, "Results": 12409}, {"Week": "Week 2", "Month": "January", "Platform": "FB & IG", "Campaign": "Website Traffic", "Spend": 13816.36, "Impressions": 1681787, "Clicks": 24778.0, "Results": 14408}, {"Week": "Week 3", "Month": "January", "Platform": "FB & IG", "Campaign": "Website Traffic", "Spend": 14792.41, "Impressions": 1749988, "Clicks": 25754.0, "Results": 14733}, {"Week": "Week 4", "Month": "January", "Platform": "FB & IG", "Campaign": "Website Traffic", "Spend": 17809.03, "Impressions": 1987475, "Clicks": 30532.0, "Results": 18704}, {"Week": "Week 1", "Month": "January", "Platform": "IG", "Campaign": "Post Engagement", "Spend": "₹2,418.27", "Impressions": 140531, "Clicks": "", "Results": 15084}, {"Week": "Week 2", "Month": "January", "Platform": "IG", "Campaign": "Post Engagement", "Spend": "₹5,064.26", "Impressions": 289205, "Clicks": "", "Results": 45281}, {"Week": "Week 3", "Month": "January", "Platform": "IG", "Campaign": "Post Engagement", "Spend": "₹7,444.39", "Impressions": 323787, "Clicks": "", "Results": 38148}, {"Week": "Week 4", "Month": "January", "Platform": "IG", "Campaign": "Post Engagement", "Spend": "₹4,002.61", "Impressions": 224552, "Clicks": "", "Results": 23171}, {"Week": "Week 1", "Month": "January", "Platform": "LinkedIn", "Campaign": "Engagement", "Spend": "₹12,417.22", "Impressions": 375651, "Clicks": "", "Results": 53000}, {"Week": "Week 2", "Month": "January", "Platform": "LinkedIn", "Campaign": "Engagement", "Spend": "₹10,434.14", "Impressions": 239455, "Clicks": "", "Results": 31852}, {"Week": "Week 3", "Month": "January", "Platform": "LinkedIn", "Campaign": "Engagement", "Spend": "₹10,629.35", "Impressions": 193230, "Clicks": "", "Results": 24893}, {"Week": "Week 4", "Month": "January", "Platform": "LinkedIn", "Campaign": "Engagement", "Spend": "₹6,862.98", "Impressions": 139975, "Clicks": "", "Results": 14232}], "paidData1": {"meta": [{"Date": "01/01/2026", "Promotion Type": "Website Traffic", "Objective": "Landing Page Views", "Net Spend": 10000, "Impression": 19087, "Reach": 19087, "Clicks": 1200, "CTR": 0.01, "Website Traffic": 1200, "CPLPV": 1.2566025641025642, "Avg. Time Spend": 2.5, "Bounce Rate": 0.2}, {"Date": "02/01/2026", "Promotion Type": "Website Traffic", "Objective": "Landing Page Views", "Net Spend": 2000, "Impression": 1234, "Reach": 1234, "Clicks": 1245, "CTR": 0.01, "Website Traffic": 1245, "CPLPV": 1.0201364615752933, "Avg. Time Spend": 1.5, "Bounce Rate": 0.14}, {"Date": "03/01/2026", "Promotion Type": "Website Traffic", "Objective": "Landing Page Views", "Net Spend": 40000, "Impression": 23456, "Reach": 23456, "Clicks": 345, "CTR": 0.01, "Website Traffic": 345, "CPLPV": 1.174460199004975, "Avg. Time Spend": 2.4, "Bounce Rate": 0.16}, {"Date": "04/01/2026", "Promotion Type": "Website Traffic", "Objective": "Landing Page Views", "Net Spend": 2344, "Impression": 23456, "Reach": 23456, "Clicks": 333, "CTR": 0.01, "Website Traffic": 333, "CPLPV": 1.3495201796773975, "Avg. Time Spend": 5.6, "Bounce Rate": 0.12}, {"Date": "05/01/2026", "Promotion Type": "Website Traffic", "Objective": "Landing Page Views", "Net Spend": 34567, "Impression": 22233, "Reach": 22233, "Clicks": 567, "CTR": 0.01, "Website Traffic": 567, "CPLPV": 1.2566025641025642, "Avg. Time Spend": 2.5, "Bounce Rate": 0.2}, {"Date": "06/01/2026", "Promotion Type": "Website Traffic", "Objective": "Landing Page Views", "Net Spend": 3333, "Impression": 44444, "Reach": 44444, "Clicks": 333, "CTR": 0.01, "Website Traffic": 333, "CPLPV": 1.0201364615752933, "Avg. Time Spend": 1.5, "Bounce Rate": 0.14}, {"Date": "07/01/2026", "Promotion Type": "Website Traffic", "Objective": "Landing Page Views", "Net Spend": 44444, "Impression": 22344, "Reach": 22344, "Clicks": 678, "CTR": 0.01, "Website Traffic": 678, "CPLPV": 1.174460199004975, "Avg. Time Spend": 2.4, "Bounce Rate": 0.16}, {"Date": "08/01/2026", "Promotion Type": "Website Traffic", "Objective": "Landing Page Views", "Net Spend": 22222, "Impression": 22345, "Reach": 22345, "Clicks": 44, "CTR": 0.01, "Website Traffic": 44, "CPLPV": 1.3495201796773975, "Avg. Time Spend": 5.6, "Bounce Rate": 0.12}, {"Date": "09/01/2026", "Promotion Type": "Website Traffic", "Objective": "Landing Page Views", "Net Spend": 33333, "Impression": 23455, "Reach": 23455, "Clicks": 778, "CTR": 0.01, "Website Traffic": 778, "CPLPV": 1.2566025641025642, "Avg. Time Spend": 2.5, "Bounce Rate": 0.2}, {"Date": "10/01/2026", "Promotion Type": "Website Traffic", "Objective": "Landing Page Views", "Net Spend": 22233, "Impression": 23455, "Reach": 23455, "Clicks": 444, "CTR": 0.01, "Website Traffic": 444, "CPLPV": 1.0201364615752933, "Avg. Time Spend": 1.5, "Bounce Rate": 0.14}, {"Date": "11/01/2026", "Promotion Type": "Website Traffic", "Objective": "Landing Page Views", "Net Spend": 10000, "Impression": 19087, "Reach": 19087, "Clicks": 1200, "CTR": 0.01, "Website Traffic": 1200, "CPLPV": 1.2566025641025642, "Avg. Time Spend": 2.5, "Bounce Rate": 0.2}, {"Date": "12/01/2026", "Promotion Type": "Website Traffic", "Objective": "Landing Page Views", "Net Spend": 2000, "Impression": 1234, "Reach": 1234, "Clicks": 1245, "CTR": 0.01, "Website Traffic": 1245, "CPLPV": 1.0201364615752933, "Avg. Time Spend": 1.5, "Bounce Rate": 0.14}, {"Date": "13/01/2026", "Promotion Type": "Website Traffic", "Objective": "Landing Page Views", "Net Spend": 40000, "Impression": 23456, "Reach": 23456, "Clicks": 345, "CTR": 0.01, "Website Traffic": 345, "CPLPV": 1.174460199004975, "Avg. Time Spend": 2.4, "Bounce Rate": 0.16}, {"Date": "14/01/2026", "Promotion Type": "Website Traffic", "Objective": "Landing Page Views", "Net Spend": 2344, "Impression": 23456, "Reach": 23456, "Clicks": 333, "CTR": 0.01, "Website Traffic": 333, "CPLPV": 1.3495201796773975, "Avg. Time Spend": 5.6, "Bounce Rate": 0.12}, {"Date": "15/01/2026", "Promotion Type": "Website Traffic", "Objective": "Landing Page Views", "Net Spend": 34567, "Impression": 22233, "Reach": 22233, "Clicks": 567, "CTR": 0.01, "Website Traffic": 567, "CPLPV": 1.2566025641025642, "Avg. Time Spend": 2.5, "Bounce Rate": 0.2}, {"Date": "16/01/2026", "Promotion Type": "Website Traffic", "Objective": "Landing Page Views", "Net Spend": 3333, "Impression": 44444, "Reach": 44444, "Clicks": 333, "CTR": 0.01, "Website Traffic": 333, "CPLPV": 1.0201364615752933, "Avg. Time Spend": 1.5, "Bounce Rate": 0.14}, {"Date": "17/01/2026", "Promotion Type": "Website Traffic", "Objective": "Landing Page Views", "Net Spend": 44444, "Impression": 22344, "Reach": 22344, "Clicks": 678, "CTR": 0.01, "Website Traffic": 678, "CPLPV": 1.174460199004975, "Avg. Time Spend": 2.4, "Bounce Rate": 0.16}, {"Date": "18/01/2026", "Promotion Type": "Website Traffic", "Objective": "Landing Page Views", "Net Spend": 22222, "Impression": 22345, "Reach": 22345, "Clicks": 44, "CTR": 0.01, "Website Traffic": 44, "CPLPV": 1.3495201796773975, "Avg. Time Spend": 5.6, "Bounce Rate": 0.12}, {"Date": "19/01/2026", "Promotion Type": "Website Traffic", "Objective": "Landing Page Views", "Net Spend": 33333, "Impression": 23455, "Reach": 23455, "Clicks": 778, "CTR": 0.01, "Website Traffic": 778, "CPLPV": 1.2566025641025642, "Avg. Time Spend": 2.5, "Bounce Rate": 0.2}, {"Date": "20/01/2026", "Promotion Type": "Website Traffic", "Objective": "Landing Page Views", "Net Spend": 22233, "Impression": 23455, "Reach": 23455, "Clicks": 444, "CTR": 0.01, "Website Traffic": 444, "CPLPV": 1.0201364615752933, "Avg. Time Spend": 1.5, "Bounce Rate": 0.14}, {"Date": "21/01/2026", "Promotion Type": "Website Traffic", "Objective": "Landing Page Views", "Net Spend": 10000, "Impression": 19087, "Reach": 19087, "Clicks": 1200, "CTR": 0.01, "Website Traffic": 1200, "CPLPV": 1.2566025641025642, "Avg. Time Spend": 2.5, "Bounce Rate": 0.2}, {"Date": "22/01/2026", "Promotion Type": "Website Traffic", "Objective": "Landing Page Views", "Net Spend": 2000, "Impression": 1234, "Reach": 1234, "Clicks": 1245, "CTR": 0.01, "Website Traffic": 1245, "CPLPV": 1.0201364615752933, "Avg. Time Spend": 1.5, "Bounce Rate": 0.14}, {"Date": "23/01/2026", "Promotion Type": "Website Traffic", "Objective": "Landing Page Views", "Net Spend": 40000, "Impression": 23456, "Reach": 23456, "Clicks": 345, "CTR": 0.01, "Website Traffic": 345, "CPLPV": 1.174460199004975, "Avg. Time Spend": 2.4, "Bounce Rate": 0.16}, {"Date": "24/01/2026", "Promotion Type": "Website Traffic", "Objective": "Landing Page Views", "Net Spend": 2344, "Impression": 23456, "Reach": 23456, "Clicks": 333, "CTR": 0.01, "Website Traffic": 333, "CPLPV": 1.3495201796773975, "Avg. Time Spend": 5.6, "Bounce Rate": 0.12}, {"Date": "25/01/2026", "Promotion Type": "Website Traffic", "Objective": "Landing Page Views", "Net Spend": 34567, "Impression": 22233, "Reach": 22233, "Clicks": 567, "CTR": 0.01, "Website Traffic": 567, "CPLPV": 1.2566025641025642, "Avg. Time Spend": 2.5, "Bounce Rate": 0.2}, {"Date": "26/01/2026", "Promotion Type": "Website Traffic", "Objective": "Landing Page Views", "Net Spend": 3333, "Impression": 44444, "Reach": 44444, "Clicks": 333, "CTR": 0.01, "Website Traffic": 333, "CPLPV": 1.0201364615752933, "Avg. Time Spend": 1.5, "Bounce Rate": 0.14}, {"Date": "27/01/2026", "Promotion Type": "Website Traffic", "Objective": "Landing Page Views", "Net Spend": 44444, "Impression": 22344, "Reach": 22344, "Clicks": 678, "CTR": 0.01, "Website Traffic": 678, "CPLPV": 1.174460199004975, "Avg. Time Spend": 2.4, "Bounce Rate": 0.16}, {"Date": "28/01/2026", "Promotion Type": "Website Traffic", "Objective": "Landing Page Views", "Net Spend": 22222, "Impression": 22345, "Reach": 22345, "Clicks": 44, "CTR": 0.01, "Website Traffic": 44, "CPLPV": 1.3495201796773975, "Avg. Time Spend": 5.6, "Bounce Rate": 0.12}, {"Date": "29/01/2026", "Promotion Type": "Website Traffic", "Objective": "Landing Page Views", "Net Spend": 33333, "Impression": 23455, "Reach": 23455, "Clicks": 778, "CTR": 0.01, "Website Traffic": 778, "CPLPV": 1.2566025641025642, "Avg. Time Spend": 2.5, "Bounce Rate": 0.2}, {"Date": "30/01/2026", "Promotion Type": "Website Traffic", "Objective": "Landing Page Views", "Net Spend": 22233, "Impression": 23455, "Reach": 23455, "Clicks": 444, "CTR": 0.00999999999999998, "Website Traffic": 444, "CPLPV": 1.0201364615752933, "Avg. Time Spend": 1.5, "Bounce Rate": 0.14}], "instagram": [{"Date": "01/01/2026", "Promotion Type": "Post Promotion", "Objective": "Engagement", "Net Spend": 10000, "Impression": 19087, "Reach": 59442, "Engagement": 1234, "CPE": 0.05429964539007092, "ER": 0.06465133337, "Video plays": 233, "Follwers Gain": 233, "col26": ""}, {"Date": "02/01/2026", "Promotion Type": "Post Promotion", "Objective": "Engagement", "Net Spend": 2000, "Impression": 1234, "Reach": 245007, "Engagement": 1233, "CPE": 0.03298118939385601, "ER": 0.9991896272, "Video plays": 345, "Follwers Gain": 345, "col26": ""}, {"Date": "03/01/2026", "Promotion Type": "Post Promotion", "Objective": "Engagement", "Net Spend": 40000, "Impression": 23456, "Reach": 322302, "Engagement": 3333, "CPE": 0.05083593584184833, "ER": 0.142095839, "Video plays": 345, "Follwers Gain": 345, "col26": ""}, {"Date": "04/01/2026", "Promotion Type": "Post Promotion", "Objective": "Engagement", "Net Spend": 2344, "Impression": 23456, "Reach": 869049, "Engagement": 2222, "CPE": 0.0420072056631443, "ER": 0.09473055935, "Video plays": 345, "Follwers Gain": 345, "col26": ""}, {"Date": "05/01/2026", "Promotion Type": "Post Promotion", "Objective": "Engagement", "Net Spend": 34567, "Impression": 22233, "Reach": 59442, "Engagement": 3454, "CPE": 0.05429964539007092, "ER": 0.155354653, "Video plays": 322, "Follwers Gain": 322, "col26": ""}, {"Date": "06/01/2026", "Promotion Type": "Post Promotion", "Objective": "Engagement", "Net Spend": 3333, "Impression": 44444, "Reach": 245007, "Engagement": 33446, "CPE": 0.03298118939385601, "ER": 0.7525425254, "Video plays": 456, "Follwers Gain": 456, "col26": ""}, {"Date": "07/01/2026", "Promotion Type": "Post Promotion", "Objective": "Engagement", "Net Spend": 44444, "Impression": 22344, "Reach": 322302, "Engagement": 3455, "CPE": 0.05083593584184833, "ER": 0.1546276405, "Video plays": 322, "Follwers Gain": 322, "col26": ""}, {"Date": "08/01/2026", "Promotion Type": "Post Promotion", "Objective": "Engagement", "Net Spend": 22222, "Impression": 22345, "Reach": 869049, "Engagement": 7889, "CPE": 0.0420072056631443, "ER": 0.3530543746, "Video plays": 456, "Follwers Gain": 456, "col26": ""}, {"Date": "09/01/2026", "Promotion Type": "Post Promotion", "Objective": "Engagement", "Net Spend": 33333, "Impression": 23455, "Reach": 59442, "Engagement": 2234, "CPE": 0.05429964539007092, "ER": 0.09524621616, "Video plays": 222, "Follwers Gain": 222, "col26": ""}, {"Date": "10/01/2026", "Promotion Type": "Post Promotion", "Objective": "Engagement", "Net Spend": 22233, "Impression": 23455, "Reach": 245007, "Engagement": 3333, "CPE": 0.03298118939385601, "ER": 0.1421018973, "Video plays": 345, "Follwers Gain": 345, "col26": ""}, {"Date": "11/01/2026", "Promotion Type": "Post Promotion", "Objective": "Engagement", "Net Spend": 10000, "Impression": 19087, "Reach": 59442, "Engagement": 1234, "CPE": 0.05429964539007092, "ER": 0.06465133337, "Video plays": 233, "Follwers Gain": 233, "col26": ""}, {"Date": "12/01/2026", "Promotion Type": "Post Promotion", "Objective": "Engagement", "Net Spend": 2000, "Impression": 1234, "Reach": 245007, "Engagement": 1233, "CPE": 0.03298118939385601, "ER": 0.9991896272, "Video plays": 345, "Follwers Gain": 345, "col26": ""}, {"Date": "13/01/2026", "Promotion Type": "Post Promotion", "Objective": "Engagement", "Net Spend": 40000, "Impression": 23456, "Reach": 322302, "Engagement": 3333, "CPE": 0.05083593584184833, "ER": 0.142095839, "Video plays": 345, "Follwers Gain": 345, "col26": ""}, {"Date": "14/01/2026", "Promotion Type": "Post Promotion", "Objective": "Engagement", "Net Spend": 2344, "Impression": 23456, "Reach": 869049, "Engagement": 2222, "CPE": 0.0420072056631443, "ER": 0.09473055935, "Video plays": 345, "Follwers Gain": 345, "col26": ""}, {"Date": "15/01/2026", "Promotion Type": "Post Promotion", "Objective": "Engagement", "Net Spend": 34567, "Impression": 22233, "Reach": 59442, "Engagement": 3454, "CPE": 0.05429964539007092, "ER": 0.155354653, "Video plays": 322, "Follwers Gain": 322, "col26": ""}, {"Date": "16/01/2026", "Promotion Type": "Post Promotion", "Objective": "Engagement", "Net Spend": 3333, "Impression": 44444, "Reach": 245007, "Engagement": 33446, "CPE": 0.03298118939385601, "ER": 0.7525425254, "Video plays": 456, "Follwers Gain": 456, "col26": ""}, {"Date": "17/01/2026", "Promotion Type": "Post Promotion", "Objective": "Engagement", "Net Spend": 44444, "Impression": 22344, "Reach": 322302, "Engagement": 3455, "CPE": 0.05083593584184833, "ER": 0.1546276405, "Video plays": 322, "Follwers Gain": 322, "col26": ""}, {"Date": "18/01/2026", "Promotion Type": "Post Promotion", "Objective": "Engagement", "Net Spend": 22222, "Impression": 22345, "Reach": 869049, "Engagement": 7889, "CPE": 0.0420072056631443, "ER": 0.3530543746, "Video plays": 456, "Follwers Gain": 456, "col26": ""}, {"Date": "19/01/2026", "Promotion Type": "Post Promotion", "Objective": "Engagement", "Net Spend": 33333, "Impression": 23455, "Reach": 59442, "Engagement": 2234, "CPE": 0.05429964539007092, "ER": 0.09524621616, "Video plays": 222, "Follwers Gain": 222, "col26": ""}, {"Date": "20/01/2026", "Promotion Type": "Post Promotion", "Objective": "Engagement", "Net Spend": 22233, "Impression": 23455, "Reach": 245007, "Engagement": 3333, "CPE": 0.03298118939385601, "ER": 0.1421018973, "Video plays": 345, "Follwers Gain": 345, "col26": ""}, {"Date": "21/01/2026", "Promotion Type": "Post Promotion", "Objective": "Engagement", "Net Spend": 10000, "Impression": 19087, "Reach": 59442, "Engagement": 1234, "CPE": 0.05429964539007092, "ER": 0.06465133337, "Video plays": 233, "Follwers Gain": 233, "col26": ""}, {"Date": "22/01/2026", "Promotion Type": "Post Promotion", "Objective": "Engagement", "Net Spend": 2000, "Impression": 1234, "Reach": 245007, "Engagement": 1233, "CPE": 0.03298118939385601, "ER": 0.9991896272, "Video plays": 345, "Follwers Gain": 345, "col26": ""}, {"Date": "23/01/2026", "Promotion Type": "Post Promotion", "Objective": "Engagement", "Net Spend": 40000, "Impression": 23456, "Reach": 322302, "Engagement": 3333, "CPE": 0.05083593584184833, "ER": 0.142095839, "Video plays": 345, "Follwers Gain": 345, "col26": ""}, {"Date": "24/01/2026", "Promotion Type": "Post Promotion", "Objective": "Engagement", "Net Spend": 2344, "Impression": 23456, "Reach": 869049, "Engagement": 2222, "CPE": 0.0420072056631443, "ER": 0.09473055935, "Video plays": 345, "Follwers Gain": 345, "col26": ""}, {"Date": "25/01/2026", "Promotion Type": "Post Promotion", "Objective": "Engagement", "Net Spend": 34567, "Impression": 22233, "Reach": 59442, "Engagement": 3454, "CPE": 0.05429964539007092, "ER": 0.155354653, "Video plays": 322, "Follwers Gain": 322, "col26": ""}, {"Date": "26/01/2026", "Promotion Type": "Post Promotion", "Objective": "Engagement", "Net Spend": 3333, "Impression": 44444, "Reach": 245007, "Engagement": 33446, "CPE": 0.03298118939385601, "ER": 0.7525425254, "Video plays": 456, "Follwers Gain": 456, "col26": ""}, {"Date": "27/01/2026", "Promotion Type": "Post Promotion", "Objective": "Engagement", "Net Spend": 44444, "Impression": 22344, "Reach": 322302, "Engagement": 3455, "CPE": 0.05083593584184833, "ER": 0.1546276405, "Video plays": 322, "Follwers Gain": 322, "col26": ""}, {"Date": "28/01/2026", "Promotion Type": "Post Promotion", "Objective": "Engagement", "Net Spend": 22222, "Impression": 22345, "Reach": 869049, "Engagement": 7889, "CPE": 0.0420072056631443, "ER": 0.3530543746, "Video plays": 456, "Follwers Gain": 456, "col26": ""}, {"Date": "29/01/2026", "Promotion Type": "Post Promotion", "Objective": "Engagement", "Net Spend": 33333, "Impression": 23455, "Reach": 59442, "Engagement": 2234, "CPE": 0.05429964539007092, "ER": 0.09524621616, "Video plays": 222, "Follwers Gain": 222, "col26": ""}, {"Date": "30/01/2026", "Promotion Type": "Post Promotion", "Objective": "Engagement", "Net Spend": 22233, "Impression": 23455, "Reach": 245007, "Engagement": 3333, "CPE": 0.03298118939385601, "ER": 0.1421018973, "Video plays": 345, "Follwers Gain": 345, "col26": ""}], "linkedin": [{"Date": "01/01/2026", "Objective": "Engagement", "Impression": 19087, "Deal Type": "CPE", "Engagement": 3907, "CPE": 1.67, "ER": 0.0068, "Follwers Gain": 233, "Net Spend": 10000}, {"Date": "02/01/2026", "Objective": "Engagement", "Impression": 1234, "Deal Type": "CPE", "Engagement": 3400, "CPE": 0.7652821066, "ER": 0.0065, "Follwers Gain": 345, "Net Spend": 2000}, {"Date": "03/01/2026", "Objective": "Engagement", "Impression": 23456, "Deal Type": "CPE", "Engagement": 4289, "CPE": 0.558269408, "ER": 0.0031, "Follwers Gain": 345, "Net Spend": 40000}, {"Date": "04/01/2026", "Objective": "Engagement", "Impression": 23456, "Deal Type": "CPE", "Engagement": 7064, "CPE": 0.3352118659, "ER": 0.0049, "Follwers Gain": 345, "Net Spend": 2344}, {"Date": "05/01/2026", "Objective": "Engagement", "Impression": 22233, "Deal Type": "CPE", "Engagement": 3907, "CPE": 0.1051254806, "ER": 0.0068, "Follwers Gain": 322, "Net Spend": 34567}, {"Date": "06/01/2026", "Objective": "Engagement", "Impression": 44444, "Deal Type": "CPE", "Engagement": 3400, "CPE": 0.6453429203, "ER": 0.0065, "Follwers Gain": 456, "Net Spend": 3333}, {"Date": "07/01/2026", "Objective": "Engagement", "Impression": 22344, "Deal Type": "CPE", "Engagement": 4289, "CPE": 0.7053178647, "ER": 0.0031, "Follwers Gain": 322, "Net Spend": 44444}, {"Date": "08/01/2026", "Objective": "Engagement", "Impression": 22345, "Deal Type": "CPE", "Engagement": 7064, "CPE": 0.1712002526, "ER": 0.0049, "Follwers Gain": 456, "Net Spend": 22222}, {"Date": "09/01/2026", "Objective": "Engagement", "Impression": 23455, "Deal Type": "CPE", "Engagement": 3907, "CPE": 0.7650995143, "ER": 0.0068, "Follwers Gain": 222, "Net Spend": 33333}, {"Date": "10/01/2026", "Objective": "Engagement", "Impression": 23455, "Deal Type": "CPE", "Engagement": 3400, "CPE": 0.7940611874, "ER": 0.0065, "Follwers Gain": 345, "Net Spend": 22233}, {"Date": "11/01/2026", "Objective": "Engagement", "Impression": 19087, "Deal Type": "CPE", "Engagement": 3907, "CPE": 1.67, "ER": 0.0068, "Follwers Gain": 233, "Net Spend": 10000}, {"Date": "12/01/2026", "Objective": "Engagement", "Impression": 1234, "Deal Type": "CPE", "Engagement": 3400, "CPE": 0.3638564428, "ER": 0.0065, "Follwers Gain": 345, "Net Spend": 2000}, {"Date": "13/01/2026", "Objective": "Engagement", "Impression": 23456, "Deal Type": "CPE", "Engagement": 4289, "CPE": 0.7617909081, "ER": 0.0031, "Follwers Gain": 345, "Net Spend": 40000}, {"Date": "14/01/2026", "Objective": "Engagement", "Impression": 23456, "Deal Type": "CPE", "Engagement": 7064, "CPE": 0.5272259696, "ER": 0.0049, "Follwers Gain": 345, "Net Spend": 2344}, {"Date": "15/01/2026", "Objective": "Engagement", "Impression": 22233, "Deal Type": "CPE", "Engagement": 3907, "CPE": 0.4300988534, "ER": 0.0068, "Follwers Gain": 322, "Net Spend": 34567}, {"Date": "16/01/2026", "Objective": "Engagement", "Impression": 44444, "Deal Type": "CPE", "Engagement": 3400, "CPE": 0.1657016538, "ER": 0.0065, "Follwers Gain": 456, "Net Spend": 3333}, {"Date": "17/01/2026", "Objective": "Engagement", "Impression": 22344, "Deal Type": "CPE", "Engagement": 4289, "CPE": 0.1193050928, "ER": 0.0031, "Follwers Gain": 322, "Net Spend": 44444}, {"Date": "18/01/2026", "Objective": "Engagement", "Impression": 22345, "Deal Type": "CPE", "Engagement": 7064, "CPE": 0.1908253871, "ER": 0.0049, "Follwers Gain": 456, "Net Spend": 22222}, {"Date": "19/01/2026", "Objective": "Engagement", "Impression": 23455, "Deal Type": "CPE", "Engagement": 3907, "CPE": 0.334337369, "ER": 0.0068, "Follwers Gain": 222, "Net Spend": 33333}, {"Date": "20/01/2026", "Objective": "Engagement", "Impression": 23455, "Deal Type": "CPE", "Engagement": 3400, "CPE": 0.4853161807, "ER": 0.0065, "Follwers Gain": 345, "Net Spend": 22233}, {"Date": "21/01/2026", "Objective": "Engagement", "Impression": 19087, "Deal Type": "CPE", "Engagement": 3907, "CPE": 1.67, "ER": 0.0068, "Follwers Gain": 233, "Net Spend": 10000}, {"Date": "22/01/2026", "Objective": "Engagement", "Impression": 1234, "Deal Type": "CPE", "Engagement": 3400, "CPE": 0.3203849185, "ER": 0.0065, "Follwers Gain": 345, "Net Spend": 2000}, {"Date": "23/01/2026", "Objective": "Engagement", "Impression": 23456, "Deal Type": "CPE", "Engagement": 4289, "CPE": 0.741624556, "ER": 0.0031, "Follwers Gain": 345, "Net Spend": 40000}, {"Date": "24/01/2026", "Objective": "Engagement", "Impression": 23456, "Deal Type": "CPE", "Engagement": 7064, "CPE": 0.06595077296, "ER": 0.0049, "Follwers Gain": 345, "Net Spend": 2344}, {"Date": "25/01/2026", "Objective": "Engagement", "Impression": 22233, "Deal Type": "CPE", "Engagement": 3907, "CPE": 0.4620298759, "ER": 0.0068, "Follwers Gain": 322, "Net Spend": 34567}, {"Date": "26/01/2026", "Objective": "Engagement", "Impression": 44444, "Deal Type": "CPE", "Engagement": 3400, "CPE": 0.4121379103, "ER": 0.0065, "Follwers Gain": 456, "Net Spend": 3333}, {"Date": "27/01/2026", "Objective": "Engagement", "Impression": 22344, "Deal Type": "CPE", "Engagement": 4289, "CPE": 0.4147454245, "ER": 0.0031, "Follwers Gain": 322, "Net Spend": 44444}, {"Date": "28/01/2026", "Objective": "Engagement", "Impression": 22345, "Deal Type": "CPE", "Engagement": 7064, "CPE": 0.5156606832, "ER": 0.0049, "Follwers Gain": 456, "Net Spend": 22222}, {"Date": "29/01/2026", "Objective": "Engagement", "Impression": 23455, "Deal Type": "CPE", "Engagement": 3907, "CPE": 0.6124104767, "ER": 0.0068, "Follwers Gain": 222, "Net Spend": 33333}, {"Date": "30/01/2026", "Objective": "Engagement", "Impression": 23455, "Deal Type": "CPE", "Engagement": 3400, "CPE": 0.06771044838, "ER": 0.0065, "Follwers Gain": 345, "Net Spend": 22233}]}, "organicData": {"facebook": [{"Date": "01/01/2025", "Impressions": 1411, "Reach": 1355, "Video Views": 0, "Engagement (Without VV)": 77, "ER": 0.0546, "Clicks": 27, "Followers Added": 714}, {"Date": "02/01/2026", "Impressions": 1268, "Reach": 1208, "Video Views": 0, "Engagement (Without VV)": 58, "ER": 0.0457, "Clicks": 29, "Followers Added": 607}, {"Date": "03/01/2026", "Impressions": 1858, "Reach": 1757, "Video Views": 0, "Engagement (Without VV)": 54, "ER": 0.0291, "Clicks": 12, "Followers Added": 635}, {"Date": "04/01/2026", "Impressions": 2274, "Reach": 2161, "Video Views": 0, "Engagement (Without VV)": 79, "ER": 0.0347, "Clicks": 27, "Followers Added": 1489}, {"Date": "05/01/2026", "Impressions": 1169, "Reach": 1059, "Video Views": 452, "Engagement (Without VV)": 47, "ER": 0.0402, "Clicks": 16, "Followers Added": 38}, {"Date": "06/01/2026", "Impressions": 1319, "Reach": 1214, "Video Views": 488, "Engagement (Without VV)": 80, "ER": 0.0607, "Clicks": 40, "Followers Added": 21}, {"Date": "07/01/2026", "Impressions": 1289, "Reach": 1206, "Video Views": 428, "Engagement (Without VV)": 45, "ER": 0.0349, "Clicks": 18, "Followers Added": 3070}, {"Date": "08/01/2026", "Impressions": 1388, "Reach": 1277, "Video Views": 538, "Engagement (Without VV)": 30, "ER": 0.0216, "Clicks": 10, "Followers Added": 44}, {"Date": "09/01/2026", "Impressions": 913, "Reach": 856, "Video Views": 530, "Engagement (Without VV)": 41, "ER": 0.0449, "Clicks": 16, "Followers Added": 12}, {"Date": "10/01/2026", "Impressions": 979, "Reach": 919, "Video Views": 537, "Engagement (Without VV)": 28, "ER": 0.0286, "Clicks": 2, "Followers Added": 37}, {"Date": "11/01/2026", "Impressions": 706, "Reach": 675, "Video Views": 250, "Engagement (Without VV)": 59, "ER": 0.0874, "Clicks": 22, "Followers Added": 30}, {"Date": "12/01/2026", "Impressions": 1885, "Reach": 1796, "Video Views": 312, "Engagement (Without VV)": 60, "ER": 0.0334, "Clicks": 48, "Followers Added": 7}, {"Date": "13/01/2026", "Impressions": 1499, "Reach": 1417, "Video Views": 1448, "Engagement (Without VV)": 17, "ER": 0.012, "Clicks": 41, "Followers Added": 15}, {"Date": "14/01/2026", "Impressions": 891, "Reach": 856, "Video Views": 997, "Engagement (Without VV)": 17, "ER": 0.0334, "Clicks": 55, "Followers Added": 8}, {"Date": "15/01/2026", "Impressions": 891, "Reach": 6153, "Video Views": 1825, "Engagement (Without VV)": 20, "ER": 0.1597, "Clicks": 27, "Followers Added": 9}, {"Date": "16/01/2026", "Impressions": 2184, "Reach": 1594, "Video Views": 1210, "Engagement (Without VV)": 26, "ER": 0.014, "Clicks": 29, "Followers Added": 3}, {"Date": "17/01/2026", "Impressions": 2111, "Reach": 1894, "Video Views": 1433, "Engagement (Without VV)": 9, "ER": 0.42, "Clicks": 12, "Followers Added": 0}, {"Date": "18/01/2026", "Impressions": 1141, "Reach": 1767, "Video Views": 975, "Engagement (Without VV)": 42, "ER": 0.0192, "Clicks": 27, "Followers Added": 0}, {"Date": "19/01/2026", "Impressions": 4453, "Reach": 1033, "Video Views": 1176, "Engagement (Without VV)": 147, "ER": 0.033, "Clicks": 16, "Followers Added": 0}, {"Date": "20/01/2026", "Impressions": 1633, "Reach": 2172, "Video Views": 1176, "Engagement (Without VV)": 41, "ER": 0.0169, "Clicks": 40, "Followers Added": 21}, {"Date": "21/01/2026", "Impressions": 3933, "Reach": 3042, "Video Views": 2062, "Engagement (Without VV)": 96, "ER": 0.0227, "Clicks": 18, "Followers Added": 0}, {"Date": "22/01/2026", "Impressions": 10047, "Reach": 5067, "Video Views": 800, "Engagement (Without VV)": 5168, "ER": 0.5144, "Clicks": 10, "Followers Added": 16}, {"Date": "23/01/2026", "Impressions": 5941, "Reach": 3831, "Video Views": 2196, "Engagement (Without VV)": 63, "ER": 0.0106, "Clicks": 16, "Followers Added": 22}, {"Date": "24/01/2026", "Impressions": 12946, "Reach": 9101, "Video Views": 4295, "Engagement (Without VV)": 409, "ER": 0.0315, "Clicks": 2, "Followers Added": 22}, {"Date": "25/01/2026", "Impressions": 13440, "Reach": 8990, "Video Views": 3593, "Engagement (Without VV)": 148, "ER": 0.011, "Clicks": 22, "Followers Added": 20}, {"Date": "26/01/2026", "Impressions": 3810, "Reach": 3015, "Video Views": 2129, "Engagement (Without VV)": 19, "ER": 0.0049, "Clicks": 48, "Followers Added": 0}, {"Date": "27/01/2026", "Impressions": 3810, "Reach": 3015, "Video Views": 2129, "Engagement (Without VV)": 19, "ER": 0.0049, "Clicks": 41, "Followers Added": 20}], "instagram": [{"Date": "01/01/2025", "Impressions": 6840, "Reach": 6328, "Video Views": 3605, "Engagement (Without VV)": 302, "ER": 0.0442, "Clicks": 0, "Followers Added": 0}, {"Date": "02/01/2026", "Impressions": 6840, "Reach": 2719, "Video Views": 1733, "Engagement (Without VV)": 282, "ER": 0.0412, "Clicks": 0, "Followers Added": 0}, {"Date": "03/01/2026", "Impressions": 2730, "Reach": 2441, "Video Views": 1657, "Engagement (Without VV)": 210, "ER": 0.0769, "Clicks": 0, "Followers Added": 0}, {"Date": "04/01/2026", "Impressions": 5703, "Reach": 5455, "Video Views": 4345, "Engagement (Without VV)": 221, "ER": 0.0388, "Clicks": 0, "Followers Added": 0}, {"Date": "05/01/2026", "Impressions": 1642, "Reach": 1462, "Video Views": 1755, "Engagement (Without VV)": 138, "ER": 0.084, "Clicks": 0, "Followers Added": 43}, {"Date": "06/01/2026", "Impressions": 961, "Reach": 873, "Video Views": 1311, "Engagement (Without VV)": 113, "ER": 0.1176, "Clicks": 0, "Followers Added": 7}, {"Date": "07/01/2026", "Impressions": 5186, "Reach": 4386, "Video Views": 1938, "Engagement (Without VV)": 386, "ER": 0.0744, "Clicks": 0, "Followers Added": 79}, {"Date": "08/01/2026", "Impressions": 2217, "Reach": 1991, "Video Views": 2144, "Engagement (Without VV)": 181, "ER": 0.0816, "Clicks": 0, "Followers Added": 98}, {"Date": "09/01/2026", "Impressions": 3131, "Reach": 3630, "Video Views": 4796, "Engagement (Without VV)": 287, "ER": 0.0917, "Clicks": 0, "Followers Added": 42}, {"Date": "10/01/2026", "Impressions": 3716, "Reach": 3097, "Video Views": 4633, "Engagement (Without VV)": 301, "ER": 0.081, "Clicks": 0, "Followers Added": 89}, {"Date": "11/01/2026", "Impressions": 1126, "Reach": 1018, "Video Views": 1577, "Engagement (Without VV)": 122, "ER": 0.1198, "Clicks": 0, "Followers Added": 22}, {"Date": "12/01/2026", "Impressions": 3623, "Reach": 3143, "Video Views": 1286, "Engagement (Without VV)": 251, "ER": 0.0799, "Clicks": 0, "Followers Added": 72}, {"Date": "13/01/2026", "Impressions": 0, "Reach": 2044, "Video Views": 3068, "Engagement (Without VV)": 149, "ER": 0.0729, "Clicks": 0, "Followers Added": 108}, {"Date": "14/01/2026", "Impressions": 0, "Reach": 2236, "Video Views": 3140, "Engagement (Without VV)": 202, "ER": 0.0903, "Clicks": 0, "Followers Added": 119}, {"Date": "15/01/2026", "Impressions": "", "Reach": 5020, "Video Views": 7884, "Engagement (Without VV)": 293, "ER": 0.0864, "Clicks": "", "Followers Added": 392}, {"Date": "16/01/2026", "Impressions": 7586, "Reach": 4454, "Video Views": 4284, "Engagement (Without VV)": 297, "ER": 0.073, "Clicks": "", "Followers Added": 44}, {"Date": "17/01/2026", "Impressions": 7743, "Reach": 6259, "Video Views": 55422, "Engagement (Without VV)": 113, "ER": 0.0145, "Clicks": "", "Followers Added": 15}, {"Date": "18/01/2026", "Impressions": 1263318, "Reach": 706204, "Video Views": 1256223, "Engagement (Without VV)": 56914, "ER": 0.0566, "Clicks": "", "Followers Added": 194}, {"Date": "19/01/2026", "Impressions": 3735711, "Reach": 2133010, "Video Views": 352381, "Engagement (Without VV)": 118996, "ER": 0.0318, "Clicks": "", "Followers Added": 187}, {"Date": "20/01/2026", "Impressions": 5460843, "Reach": 3821388, "Video Views": 1131040, "Engagement (Without VV)": 71007, "ER": 0.013, "Clicks": "", "Followers Added": 490}, {"Date": "21/01/2026", "Impressions": 722610, "Reach": 2280906, "Video Views": 1936711, "Engagement (Without VV)": 40882, "ER": 0.0565, "Clicks": "", "Followers Added": 214}, {"Date": "22/01/2026", "Impressions": 705824, "Reach": 1742879, "Video Views": 145045, "Engagement (Without VV)": 43246, "ER": 0.0612, "Clicks": "", "Followers Added": 432}, {"Date": "23/01/2026", "Impressions": 1124547, "Reach": 2456404, "Video Views": 10906, "Engagement (Without VV)": 306, "ER": 0.0002, "Clicks": "", "Followers Added": 433}, {"Date": "24/01/2026", "Impressions": 1069513, "Reach": 2190910, "Video Views": 527599, "Engagement (Without VV)": 10984, "ER": 0.0102, "Clicks": "", "Followers Added": 606}, {"Date": "25/01/2026", "Impressions": 1443293, "Reach": 3061573, "Video Views": 18506, "Engagement (Without VV)": 6017, "ER": 0.0041, "Clicks": "", "Followers Added": 641}, {"Date": "26/01/2026", "Impressions": 1368728, "Reach": 2682432, "Video Views": 100811, "Engagement (Without VV)": 4799, "ER": 0.0035, "Clicks": "", "Followers Added": 923}, {"Date": "27/01/2026", "Impressions": 1368728, "Reach": 2682432, "Video Views": 100811, "Engagement (Without VV)": 4799, "ER": 0.0035, "Clicks": "", "Followers Added": 923}], "linkedin": [{"Date": "01/01/2025", "Impressions": 20591, "Reach": "", "Video Views": "", "Engagement (Without VV)": 2217, "ER": 0.1077, "Clicks": 1414, "Followers Added": ""}, {"Date": "02/01/2026", "Impressions": 12406, "Reach": "", "Video Views": "", "Engagement (Without VV)": 2711, "ER": 0.2185, "Clicks": 2358, "Followers Added": ""}, {"Date": "03/01/2026", "Impressions": 31399, "Reach": "", "Video Views": "", "Engagement (Without VV)": 3116, "ER": 0.1008, "Clicks": 2205, "Followers Added": 291}, {"Date": "04/01/2026", "Impressions": 31399, "Reach": "", "Video Views": "", "Engagement (Without VV)": 6302, "ER": 0.1529, "Clicks": 5174, "Followers Added": 267}, {"Date": "05/01/2026", "Impressions": 21136, "Reach": "", "Video Views": "", "Engagement (Without VV)": 1211, "ER": 0.0886, "Clicks": 2995, "Followers Added": 567}, {"Date": "06/01/2026", "Impressions": 36509, "Reach": "", "Video Views": "", "Engagement (Without VV)": 3384, "ER": 0.0927, "Clicks": 1673, "Followers Added": 351}, {"Date": "07/01/2026", "Impressions": 52450, "Reach": "", "Video Views": "", "Engagement (Without VV)": 14105, "ER": 0.2689, "Clicks": 12998, "Followers Added": 324}, {"Date": "08/01/2026", "Impressions": 21071, "Reach": "", "Video Views": "", "Engagement (Without VV)": 8873, "ER": 0.4211, "Clicks": 8201, "Followers Added": 419}, {"Date": "09/01/2026", "Impressions": 35859, "Reach": "", "Video Views": "", "Engagement (Without VV)": 11480, "ER": 0.3201, "Clicks": 10592, "Followers Added": 732}, {"Date": "10/01/2026", "Impressions": 98339, "Reach": "", "Video Views": "", "Engagement (Without VV)": 30448, "ER": 0.3096, "Clicks": 27640, "Followers Added": 316}, {"Date": "11/01/2026", "Impressions": 34435, "Reach": "", "Video Views": "", "Engagement (Without VV)": 5379, "ER": 0.1562, "Clicks": 6615, "Followers Added": 223}, {"Date": "12/01/2026", "Impressions": 50308, "Reach": "", "Video Views": "", "Engagement (Without VV)": 7644, "ER": 0.1519, "Clicks": 7813, "Followers Added": 467}, {"Date": "13/01/2026", "Impressions": 46955, "Reach": "", "Video Views": "", "Engagement (Without VV)": 11837, "ER": 0.2521, "Clicks": 11885, "Followers Added": 444}, {"Date": "14/01/2026", "Impressions": 33040, "Reach": "", "Video Views": "", "Engagement (Without VV)": 3536, "ER": 0.1243, "Clicks": 5884, "Followers Added": 259}, {"Date": "15/01/2026", "Impressions": 444938, "Reach": "", "Video Views": "", "Engagement (Without VV)": 7787, "ER": 0.4391, "Clicks": "", "Followers Added": 460}, {"Date": "16/01/2026", "Impressions": 35879, "Reach": 8431, "Video Views": 169, "Engagement (Without VV)": 2560, "ER": 0.0951, "Clicks": 1982, "Followers Added": 493}, {"Date": "17/01/2026", "Impressions": 36499, "Reach": 14897, "Video Views": 1607, "Engagement (Without VV)": 4194, "ER": 0.1149, "Clicks": 13480, "Followers Added": 542}, {"Date": "18/01/2026", "Impressions": 48104, "Reach": 20904, "Video Views": 4755, "Engagement (Without VV)": 3411, "ER": 0.0708, "Clicks": 29463, "Followers Added": 972}, {"Date": "19/01/2026", "Impressions": 46242, "Reach": 19024, "Video Views": 1421, "Engagement (Without VV)": 4359, "ER": 0.105, "Clicks": 5111, "Followers Added": 730}, {"Date": "20/01/2026", "Impressions": 52565, "Reach": 21429, "Video Views": 5323, "Engagement (Without VV)": 6743, "ER": 0.137, "Clicks": 12924, "Followers Added": 428}, {"Date": "21/01/2026", "Impressions": 52045, "Reach": 20572, "Video Views": 25650, "Engagement (Without VV)": 3574, "ER": 0.0898, "Clicks": 15727, "Followers Added": 662}, {"Date": "22/01/2026", "Impressions": 53497, "Reach": 21240, "Video Views": 1902, "Engagement (Without VV)": 7161, "ER": 0.1338, "Clicks": 4767, "Followers Added": 645}, {"Date": "23/01/2026", "Impressions": 47947, "Reach": 19254, "Video Views": 2757, "Engagement (Without VV)": 2642, "ER": 0.0551, "Clicks": 1950, "Followers Added": 664}, {"Date": "24/01/2026", "Impressions": 54761, "Reach": 21549, "Video Views": 4075, "Engagement (Without VV)": 7266, "ER": 0.1326, "Clicks": 6836, "Followers Added": 913}, {"Date": "25/01/2026", "Impressions": 51932, "Reach": 21272, "Video Views": 1311, "Engagement (Without VV)": 4436, "ER": 0.0854, "Clicks": 3432, "Followers Added": 1201}, {"Date": "26/01/2026", "Impressions": 41137, "Reach": 17667, "Video Views": 2111, "Engagement (Without VV)": 2590, "ER": 0.0629, "Clicks": 1802, "Followers Added": 860}, {"Date": "27/01/2026", "Impressions": 41137, "Reach": 17667, "Video Views": 2111, "Engagement (Without VV)": 2590, "ER": 0.0629, "Clicks": 1802, "Followers Added": 860}]}, "websiteData": [{"Session primary channel group (Default Channel Group)": "Organic Search", "Total users": 7651, "Active users": 7173, "Sessions": 11091, "Engaged sessions": 6256, "Engaged sessions per active user": 0.872159486965007, "Events per session": 5.24326030114507, "Engagement rate": 0.564060950320079, "Session key event rate": 0, "Total revenue": 0, "Bounce rate": 0.43593904967992, "Average engagement time per session": 42.9172301866378}, {"Session primary channel group (Default Channel Group)": "Direct", "Total users": 2058, "Active users": 1977, "Sessions": 2604, "Engaged sessions": 1009, "Engaged sessions per active user": 0.510369246332827, "Events per session": 4.4089861751152, "Engagement rate": 0.387480798771121, "Session key event rate": 0, "Total revenue": 0, "Bounce rate": 0.612519201228878, "Average engagement time per session": 24.5261136712749}, {"Session primary channel group (Default Channel Group)": "Referral", "Total users": 345, "Active users": 326, "Sessions": 466, "Engaged sessions": 252, "Engaged sessions per active user": 0.773006134969325, "Events per session": 5.57081545064377, "Engagement rate": 0.540772532188841, "Session key event rate": 0, "Total revenue": 0, "Bounce rate": 0.459227467811158, "Average engagement time per session": 45.0793991416309}, {"Session primary channel group (Default Channel Group)": "Organic Social", "Total users": 214, "Active users": 204, "Sessions": 309, "Engaged sessions": 147, "Engaged sessions per active user": 0.720588235294117, "Events per session": 5.22330097087378, "Engagement rate": 0.475728155339805, "Session key event rate": 0, "Total revenue": 0, "Bounce rate": 0.524271844660194, "Average engagement time per session": 25.5177993527508}, {"Session primary channel group (Default Channel Group)": "Unassigned", "Total users": 102, "Active users": 98, "Sessions": 186, "Engaged sessions": 86, "Engaged sessions per active user": 0.877551020408163, "Events per session": 5.39784946236559, "Engagement rate": 0.462365591397849, "Session key event rate": 0, "Total revenue": 0, "Bounce rate": 0.53763440860215, "Average engagement time per session": 29.8010752688172}, {"Session primary channel group (Default Channel Group)": "Paid Social", "Total users": 80, "Active users": 56, "Sessions": 103, "Engaged sessions": 5, "Engaged sessions per active user": 0.0892857142857142, "Events per session": 2.68932038834951, "Engagement rate": 0.0485436893203883, "Session key event rate": 0, "Total revenue": 0, "Bounce rate": 0.951456310679611, "Average engagement time per session": 0.29126213592233}, {"Session primary channel group (Default Channel Group)": "Paid Search", "Total users": 3, "Active users": 3, "Sessions": 3, "Engaged sessions": 0, "Engaged sessions per active user": 0, "Events per session": 3, "Engagement rate": 0, "Session key event rate": 0, "Total revenue": 0, "Bounce rate": 1, "Average engagement time per session": 0}, {"Session primary channel group (Default Channel Group)": "Organic Shopping", "Total users": 2, "Active users": 2, "Sessions": 2, "Engaged sessions": 1, "Engaged sessions per active user": 0.5, "Events per session": 4.5, "Engagement rate": 0.5, "Session key event rate": 0, "Total revenue": 0, "Bounce rate": 0.5, "Average engagement time per session": 23}], "influencers": [{"#": 1, "Influencer Name": "dil_toota_biker", "Date Posted": "14/11/2024", "Profile Link": "https://www.instagram.com/dil_toota_biker/", "Video Link": "https://www.instagram.com/reel/DCV3sP8PI04/?igsh=dTU1ejV5cTBtYWlh", "Cost": "", "Planned Views": 40000, "Achieved Views": 13000, "organicReach": "", "organicImpr": 9895, "organicCPM": 0, "organicVV": 14954, "organicER": 0.048, "organicEng": 478, "paidDuration": "", "paidImpr": "", "paidReach": "", "paidVV": "", "paidEng": "", "paidER": "", "paidCPE": "", "paidSpent": "", "followerAdded": "", "responsesToCTA": ""}, {"#": 2, "Influencer Name": "myeverydayinvestor", "Date Posted": "08/01/2025", "Profile Link": "https://www.instagram.com/myeverydayinvestor/", "Video Link": "https://www.instagram.com/reel/DEkCW2XTz4o/?igsh=M3Nxb3h3ZGU0bDAx", "Cost": "₹ 30,000.00", "Planned Views": 100000, "Achieved Views": 3284, "organicReach": "", "organicImpr": 5792, "organicCPM": 5.18, "organicVV": 7579, "organicER": 0.029, "organicEng": 169, "paidDuration": "", "paidImpr": "", "paidReach": "", "paidVV": "", "paidEng": "", "paidER": "", "paidCPE": "", "paidSpent": "", "followerAdded": "", "responsesToCTA": ""}, {"#": 3, "Influencer Name": "nakulvibhor", "Date Posted": "10/01/2025", "Profile Link": "https://www.instagram.com/nakulvibhor/", "Video Link": "https://www.instagram.com/reel/DEpbBS7z_sG/?igsh=MThicWlydmNrdWVmbQ==", "Cost": "₹ 25,000.00", "Planned Views": 20000, "Achieved Views": 6575, "organicReach": "", "organicImpr": 6609, "organicCPM": 3.78, "organicVV": 9899, "organicER": 0.034, "organicEng": 226, "paidDuration": "", "paidImpr": "", "paidReach": "", "paidVV": "", "paidEng": "", "paidER": "", "paidCPE": "", "paidSpent": "", "followerAdded": "", "responsesToCTA": ""}, {"#": 4, "Influencer Name": "financewithanubhav", "Date Posted": "05/08/2025", "Profile Link": "https://www.instagram.com/financewithanubhav_/", "Video Link": "https://www.instagram.com/reel/DM9-qBBvwO2/", "Cost": "₹ 30,000.00", "Planned Views": 230000, "Achieved Views": 16534, "organicReach": "", "organicImpr": 16534, "organicCPM": 1.81, "organicVV": "", "organicER": 0.018, "organicEng": 291, "paidDuration": "11 Aug - 17 Aug", "paidImpr": 551902, "paidReach": 520505, "paidVV": 502367, "paidEng": 189918, "paidER": 0.34, "paidCPE": 0.020497531, "paidSpent": 3892.85, "followerAdded": "", "responsesToCTA": ""}, {"#": 5, "Influencer Name": "sustainabilitywithaashima", "Date Posted": "08/09/2025", "Profile Link": "https://www.instagram.com/sustainabilitywithaashima/", "Video Link": "https://www.instagram.com/reel/DOV7yX-kk6n/", "Cost": "₹ 10,000.00", "Planned Views": 14000, "Achieved Views": 1466, "organicReach": "", "organicImpr": 1466, "organicCPM": 6.82, "organicVV": 1466, "organicER": 0.094, "organicEng": 138, "paidDuration": "16 Sept - 23 Sept", "paidImpr": 259171, "paidReach": 211085, "paidVV": 169673, "paidEng": 45810, "paidER": 0.18, "paidCPE": 0.093607509, "paidSpent": 4288.16, "followerAdded": "", "responsesToCTA": ""}, {"#": 6, "Influencer Name": "naturetalks.in", "Date Posted": "03/10/2025", "Profile Link": "https://www.instagram.com/naturetalks.in/", "Video Link": "https://www.instagram.com/reel/DPWIE8qExsZ/", "Cost": "₹ 30,000.00", "Planned Views": 53340, "Achieved Views": 2888, "organicReach": "", "organicImpr": 2888, "organicCPM": 10.39, "organicVV": 2888, "organicER": 0.077, "organicEng": 223, "paidDuration": "Only organic", "paidImpr": "-", "paidReach": "-", "paidVV": "-", "paidEng": "-", "paidER": "", "paidCPE": "-", "paidSpent": "-", "followerAdded": "", "responsesToCTA": "23 comments"}, {"#": 7, "Influencer Name": "financeby_ca_bros", "Date Posted": "27/10/2025", "Profile Link": "https://www.instagram.com/financeby_ca_bros/", "Video Link": "https://www.instagram.com/reel/DQUHJJtkgSn/?igsh=cnV2ZG8zYjl4MGFk", "Cost": "₹ 25,000.00", "Planned Views": "", "Achieved Views": "", "organicReach": "", "organicImpr": 10878, "organicCPM": 2.3, "organicVV": 14801, "organicER": 0.038, "organicEng": 414, "paidDuration": "3 Nov - 11 Nov", "paidImpr": 508109, "paidReach": 355489, "paidVV": 382370, "paidEng": 109098, "paidER": 0.21, "paidCPE": 0.036427524, "paidSpent": 3974.17, "followerAdded": "", "responsesToCTA": "8 comments"}, {"#": 8, "Influencer Name": "climatewali", "Date Posted": "19/11/2025", "Profile Link": "https://www.instagram.com/climatewali/", "Video Link": "https://www.instagram.com/p/DRPF_FLEy4-/", "Cost": "", "Planned Views": "", "Achieved Views": "", "organicReach": "", "organicImpr": 2652, "organicCPM": 0, "organicVV": 3640, "organicER": 0.042, "organicEng": 111, "paidDuration": "27 Nov - 4 Dec", "paidImpr": 202544, "paidReach": 106109, "paidVV": 130685, "paidEng": 25703, "paidER": 0.13, "paidCPE": 0.151388554, "paidSpent": 3891.14, "followerAdded": "", "responsesToCTA": "7 comments"}, {"#": 9, "Influencer Name": "ca.laxmi07", "Date Posted": "11/12/2025", "Profile Link": "https://www.instagram.com/ca.laxmi07/", "Video Link": "https://www.instagram.com/p/DSIAhZakvin/", "Cost": "", "Planned Views": "", "Achieved Views": "", "organicReach": "", "organicImpr": 4017, "organicCPM": 0, "organicVV": 6177, "organicER": 0.062, "organicEng": 250, "paidDuration": "19 Dec - 26 Dec", "paidImpr": 254654, "paidReach": 139809, "paidVV": 182369, "paidEng": 30622, "paidER": 0.12, "paidCPE": 0.15104696, "paidSpent": 4625.36, "followerAdded": "", "responsesToCTA": ""}, {"#": 10, "Influencer Name": "evgyan", "Date Posted": "02/01/2026", "Profile Link": "https://www.instagram.com/evgyan2.0?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==", "Video Link": "https://www.instagram.com/reels/DTAPWzhDEQE/", "Cost": "", "Planned Views": "", "Achieved Views": "", "organicReach": "", "organicImpr": "-", "organicCPM": 0, "organicVV": 15944, "organicER": "", "organicEng": "-", "paidDuration": "9 Jan - 16 Jan", "paidImpr": 260397, "paidReach": 123405, "paidVV": 181569, "paidEng": 40364, "paidER": 0.16, "paidCPE": 0.1, "paidSpent": 3914.24, "followerAdded": "", "responsesToCTA": ""}, {"#": 11, "Influencer Name": "learnwithshainal", "Date Posted": "29/01/2026", "Profile Link": "https://www.instagram.com/learnwithshainal/", "Video Link": "https://www.instagram.com/reels/DUGHGGwDfoz/", "Cost": "", "Planned Views": "", "Achieved Views": "", "organicReach": "", "organicImpr": "-", "organicCPM": "", "organicVV": 28811, "organicER": "", "organicEng": 780, "paidDuration": "4th Feb - 13 Feb", "paidImpr": 304667, "paidReach": 29731, "paidVV": 237290, "paidEng": 29731, "paidER": 0.1, "paidCPE": 0.14, "paidSpent": 4159.34, "followerAdded": "", "responsesToCTA": ""}, {"#": 12, "Influencer Name": "missioncleanbharat", "Date Posted": "09/03/2026", "Profile Link": "https://www.instagram.com/missioncleanbharat/?e=9ecc9d37-10d8-4896-a8d4-3bf594b5b7a8&g=5", "Video Link": "https://www.instagram.com/p/DVqbcFAk0O9/", "Cost": "", "Planned Views": "", "Achieved Views": "", "organicReach": "", "organicImpr": 6642, "organicCPM": 0, "organicVV": 14655, "organicER": 0.097, "organicEng": 647, "paidDuration": "16th Mar - 23rd Mar", "paidImpr": 225699, "paidReach": 87781, "paidVV": 208868, "paidEng": 21923, "paidER": 0.1, "paidCPE": 0.19, "paidSpent": 4161.36, "followerAdded": "", "responsesToCTA": ""}], "linkedinAnalysis": [{"Type": "Paid", "Campaign type": "Video Views", "Post title": "India’s adoption of electric vehicles is growing, but to achieve our 2030 targets, we need to accelerate.\n \n With Ecofy, take your first step towards owning an Electric Vehicle, and contribute to a cleaner, greener future.\n \n Explore more about our electric vehicle financing solutions here - https://shorturl.at/2q5Ph\n \n #Ecofy #GreenFinance #GreenUpgrade #EcofyEV #DriveGreen #EVFinancing #GoElectric #EVRevolution #GreenTransport #SustainableIndia #WorldEVDay", "Post Link": "https://www.linkedin.com/feed/update/urn:li:activity:7371053177082810368", "Format": "Video", "Campaign reach": 139305.0}, {"Type": "Paid", "Campaign type": "Video Views", "Post title": "Iss Diwali, har sapna ek umeed lekar aaya hai✨\n \n Ghar ho ya business, Ecofy sabke sapno aur muskaanon ko aur khaas bana raha hai💚\n \n Kyunki aap ka #HarSapnaKhaasHai🪔\n \n Explore the link to fulfill your sapne with Ecofy’s financing - https://shorturl.at/XPLfc\n \n #Ecofy #GreenFinance #HarSapnaKhaasHai #GreenUpgrade #EcofyEV #EcofySolar #GoElectric #Diwali2025 #FestivalOfDreams #EcofyYourJourney #DreamsThatDriveYou #SustainableFuture #CelebrateDream", "Post Link": "https://www.linkedin.com/feed/update/urn:li:activity:7384465054668152833", "Format": "Video", "Campaign reach": 8535.0}, {"Type": "Paid", "Campaign type": "Video Views", "Post title": "Every business needs cash flow support, whether it’s stocking inventory or setting up solar solutions.\n \n Ecofy’s SME Business Loans give businesses the financial strength and freedom to grow smarter, faster, and greener.\n \n Click the link to learn more - https://shorturl.at/onlUM\n \n #Ecofy #GreenFinance #GreenUpgrade #EcofySME #SMELoans #FutureReady #BusinessGrowth #GreenBusiness #GreenUpgrade #SustainableGrowth #EcofyForBusiness #CleanEnergy", "Post Link": "https://www.linkedin.com/feed/update/urn:li:activity:7373589009975017472", "Format": "Video", "Campaign reach": 3734.0}, {"Type": "Paid", "Campaign type": "Video Views", "Post title": "New journeys always shine brighter with Bappa's blessings🌺✨\n \n So start fresh with his arrival, whether it’s bringing home an Electric 2-wheeler or starting a new business.\n \n Ecofy wishes you a joyous Ganesh Chaturthi!💚\n \n #Ecofy #GreenFinance #SabkaBappaMorya \n #GreenUpgrade #ElectricVehicle #EVLoans #GanpatiCelebration #EcoFriendlyLiving #Vighnaharta", "Post Link": "https://www.linkedin.com/feed/update/urn:li:activity:7366311001555660800", "Format": "Video", "Campaign reach": 636.0}, {"Type": "Paid", "Campaign type": "Engagement", "Post title": "This milestone reflects the success of India’s manufacturing capabilities in building clean energy solutions.\n \n Whether you’re a homeowner looking to reduce electricity bills or a business owner scaling operations, you now benefit from reliable quality, fewer project delays, and be eligibility for government-backed programs.\n \n With Ecofy’s solar financing, you can harness solar energy faster while enjoying added benefits — https://bit.ly/42jHzwg\n \n Source: Ministry of New and Renewable Energy\n \n #Ecofy #GreenFinance #GreenUpgrade #RooftopSolar #SolarEnergy #SolarLoan #EcofyFinance", "Post Link": "https://www.linkedin.com/feed/update/urn:li:activity:7379719381821456384", "Format": "Static", "Campaign reach": 181764.0}, {"Type": "Paid", "Campaign type": "Engagement", "Post title": "India’s adoption of electric vehicles is growing, but to achieve our 2030 targets, we need to accelerate.\n \n With Ecofy, take your first step towards owning an Electric Vehicle, and contribute to a cleaner, greener future.\n \n Explore more about our electric vehicle financing solutions here - https://shorturl.at/2q5Ph\n \n #Ecofy #GreenFinance #GreenUpgrade #EcofyEV #DriveGreen #EVFinancing #GoElectric #EVRevolution #GreenTransport #SustainableIndia #WorldEVDay", "Post Link": "https://www.linkedin.com/feed/update/urn:li:activity:7371053177082810368", "Format": "Video", "Campaign reach": 139305.0}, {"Type": "Paid", "Campaign type": "Engagement", "Post title": "Keep your business moving, growing, and winning.\n \n Upgrade your cash flow with Ecofy’s Supply Chain Financing and get smart support for smoother operations.\n \n Click here to learn more - https://lnkd.in/gKFNcDzf\n \n #Ecofy #GreenFinance #GreenUpgrade #EcofySME #SMELoans #FutureReady #BusinessGrowth #GreenBusiness #GreenUpgrade #SustainableGrowth #EcofyForBusiness #CleanEnergy #WorkingCapital", "Post Link": "https://www.linkedin.com/feed/update/urn:li:activity:7406202725115387906", "Format": "Static", "Campaign reach": 65783.0}, {"Type": "Paid", "Campaign type": "Engagement", "Post title": "Electric 3-Wheeler ka cost hai “budget se bahar”?\n \n With support from Ecofy, finance and grow your fleet sustainably🌱\n \n Finance your Electric 3-Wheeler with ease and start saving on fuel costs ⚡\n \n Learn more here→ https://lnkd.in/gWCrG2t9\n \n #Ecofy #GreenFinance #EVLoans #ElectrifyYourFleet #EV3Wheeler #GreenFleet #GreenUpgrade", "Post Link": "https://www.linkedin.com/feed/update/urn:li:activity:7404392683726815233", "Format": "Static", "Campaign reach": 60093.0}, {"Type": "Paid", "Campaign type": "Engagement", "Post title": "This innovation stands as a testament to India’s unwavering commitment to renewable energy☀️\n \n By utilizing the water, the project enhances efficiency, as the natural cooling effect of water boosts solar panel performance and energy output💧⚡\n \n Follow us for more such interesting insights!\n \n #Ecofy #GreenFinance #GreenUpgrade #Innovation #RenewableEnergy #SolarPanel", "Post Link": "https://www.linkedin.com/feed/update/urn:li:activity:7404029566362628098", "Format": "Static", "Campaign reach": 9548.0}, {"Type": "Paid", "Campaign type": "Engagement Rate", "Post title": "With rising awareness and supportive policies, there’s no better time to go electric.\n \n At Ecofy, we make the transition simple with transparent financing solutions.\n \n The future of commuting is electric. Are you ready to be part of it?\n \n Visit our website to learn more: https://bit.ly/4qkan0Z\n \n #Ecofy #GreenFinance #EVLoans #ElectrifyYourFleet #EV3Wheeler #GreenFleet #GreenUpgrade", "Post Link": "https://www.linkedin.com/feed/update/urn:li:activity:7421789164045705216", "Format": "Static", "Campaign reach": 0.2573}, {"Type": "Paid", "Campaign type": "Engagement Rate", "Post title": "This milestone reflects the success of India’s manufacturing capabilities in building clean energy solutions.\n \n Whether you’re a homeowner looking to reduce electricity bills or a business owner scaling operations, you now benefit from reliable quality, fewer project delays, and be eligibility for government-backed programs.\n \n With Ecofy’s solar financing, you can harness solar energy faster while enjoying added benefits — https://bit.ly/42jHzwg\n \n Source: Ministry of New and Renewable Energy\n \n #Ecofy #GreenFinance #GreenUpgrade #RooftopSolar #SolarEnergy #SolarLoan #EcofyFinance", "Post Link": "https://www.linkedin.com/feed/update/urn:li:activity:7379719381821456384", "Format": "Static", "Campaign reach": 0.2494}, {"Type": "Paid", "Campaign type": "Engagement Rate", "Post title": "Keep your business moving, growing, and winning.\n \n Upgrade your cash flow with Ecofy’s Supply Chain Financing and get smart support for smoother operations.\n \n Click here to learn more - https://lnkd.in/gKFNcDzf\n \n #Ecofy #GreenFinance #GreenUpgrade #EcofySME #SMELoans #FutureReady #BusinessGrowth #GreenBusiness #GreenUpgrade #SustainableGrowth #EcofyForBusiness #CleanEnergy #WorkingCapital", "Post Link": "https://www.linkedin.com/feed/update/urn:li:activity:7406202725115387906", "Format": "Static", "Campaign reach": 0.2483}, {"Type": "Paid", "Campaign type": "Engagement Rate", "Post title": "Electric 3-Wheeler ka cost hai “budget se bahar”?\n \n With support from Ecofy, finance and grow your fleet sustainably🌱\n \n Finance your Electric 3-Wheeler with ease and start saving on fuel costs ⚡\n \n Learn more here→ https://lnkd.in/gWCrG2t9\n \n #Ecofy #GreenFinance #EVLoans #ElectrifyYourFleet #EV3Wheeler #GreenFleet #GreenUpgrade", "Post Link": "https://www.linkedin.com/feed/update/urn:li:activity:7404392683726815233", "Format": "Static", "Campaign reach": 0.2389}, {"Type": "Paid", "Campaign type": "Engagement Rate", "Post title": "Every business needs cash flow support, whether it’s stocking inventory or setting up solar solutions.\n \n Ecofy’s SME Business Loans give businesses the financial strength and freedom to grow smarter, faster, and greener.\n \n Click the link to learn more - https://shorturl.at/onlUM\n \n #Ecofy #GreenFinance #GreenUpgrade #EcofySME #SMELoans #FutureReady #BusinessGrowth #GreenBusiness #GreenUpgrade #SustainableGrowth #EcofyForBusiness #CleanEnergy", "Post Link": "https://www.linkedin.com/feed/update/urn:li:activity:7373589009975017472", "Format": "Video", "Campaign reach": 0.1466}, {"Type": "Paid", "Campaign type": "Followers Gained", "Post title": "India’s adoption of electric vehicles is growing, but to achieve our 2030 targets, we need to accelerate.\n \n With Ecofy, take your first step towards owning an Electric Vehicle, and contribute to a cleaner, greener future.\n \n Explore more about our electric vehicle financing solutions here - https://shorturl.at/2q5Ph\n \n #Ecofy #GreenFinance #GreenUpgrade #EcofyEV #DriveGreen #EVFinancing #GoElectric #EVRevolution #GreenTransport #SustainableIndia #WorldEVDay", "Post Link": "https://www.linkedin.com/feed/update/urn:li:activity:7371053177082810368", "Format": "Video", "Campaign reach": 932.0}, {"Type": "Paid", "Campaign type": "Followers Gained", "Post title": "This innovation stands as a testament to India’s unwavering commitment to renewable energy☀️\n \n By utilizing the water, the project enhances efficiency, as the natural cooling effect of water boosts solar panel performance and energy output💧⚡\n \n Follow us for more such interesting insights!\n \n #Ecofy #GreenFinance #GreenUpgrade #Innovation #RenewableEnergy #SolarPanel", "Post Link": "https://www.linkedin.com/feed/update/urn:li:activity:7404029566362628098", "Format": "Post", "Campaign reach": 324.0}, {"Type": "Paid", "Campaign type": "Followers Gained", "Post title": "This milestone reflects the success of India’s manufacturing capabilities in building clean energy solutions.\n \n Whether you’re a homeowner looking to reduce electricity bills or a business owner scaling operations, you now benefit from reliable quality, fewer project delays, and be eligibility for government-backed programs.\n \n With Ecofy’s solar financing, you can harness solar energy faster while enjoying added benefits — https://bit.ly/42jHzwg\n \n Source: Ministry of New and Renewable Energy\n \n #Ecofy #GreenFinance #GreenUpgrade #RooftopSolar #SolarEnergy #SolarLoan #EcofyFinance", "Post Link": "https://www.linkedin.com/feed/update/urn:li:activity:7379719381821456384", "Format": "Post", "Campaign reach": 269.0}, {"Type": "Paid", "Campaign type": "Followers Gained", "Post title": "Keep your business moving, growing, and winning.\n \n Upgrade your cash flow with Ecofy’s Supply Chain Financing and get smart support for smoother operations.\n \n Click here to learn more - https://lnkd.in/gKFNcDzf\n \n #Ecofy #GreenFinance #GreenUpgrade #EcofySME #SMELoans #FutureReady #BusinessGrowth #GreenBusiness #GreenUpgrade #SustainableGrowth #EcofyForBusiness #CleanEnergy #WorkingCapital", "Post Link": "https://www.linkedin.com/feed/update/urn:li:activity:7406202725115387906", "Format": "Post", "Campaign reach": 108.0}, {"Type": "Paid", "Campaign type": "Followers Gained", "Post title": "Every business needs cash flow support, whether it’s stocking inventory or setting up solar solutions.\n \n Ecofy’s SME Business Loans give businesses the financial strength and freedom to grow smarter, faster, and greener.\n \n Click the link to learn more - https://shorturl.at/onlUM\n \n #Ecofy #GreenFinance #GreenUpgrade #EcofySME #SMELoans #FutureReady #BusinessGrowth #GreenBusiness #GreenUpgrade #SustainableGrowth #EcofyForBusiness #CleanEnergy", "Post Link": "https://www.linkedin.com/feed/update/urn:li:activity:7373589009975017472", "Format": "Video", "Campaign reach": 90.0}, {"Type": "Organic", "Campaign type": "Video Views", "Post title": "At Ecofy, we celebrate every generation’s way of collaborating, building smarter solutions, and driving change for a greener tomorrow.\n \n We’re building a culture that grows greener and brighter with every fresh idea and every generation\n \n Learn how you can be a part of the team here - https://lnkd.in/dkq8XsFN\n \n #Ecofy #GreenFinance #EcofyTribe #Employees #GenZ #Millennial", "Post Link": "https://www.linkedin.com/feed/update/urn:li:activity:7367065971674611712", "Format": "Video", "Campaign reach": 3283.0}, {"Type": "Organic", "Campaign type": "Video Views", "Post title": "Our Gen Z coworker did a great job of telling you about Ecofy’s hassle free, 100% digital financing!\n \n Now it’s your turn to take the next step.\n \n Click the link to learn more - https://shorturl.at/JO0N5\n \n #Ecofy #GreenFinance #EcofyTribe #SustainableLiving #FinanceThatMatters #EcofyTeam #EmployeeSpotlight #WorkCulture #SustainabilityGoals #CleanEnergy #FutureIsGreen #FinanceWithPurpose #EcoFriendlyFinance #GenZHumor #CorporateReel", "Post Link": "https://www.linkedin.com/feed/update/urn:li:activity:7388446912133189633", "Format": "Video", "Campaign reach": 1621.0}, {"Type": "Organic", "Campaign type": "Video Views", "Post title": "At Ecofy, strategy and teamwork go beyond the workplace 🏏\n \n The #EcofyTribe brought the same energy, collaboration, and spirit to the field.\n \n Catch the highlights from Ecofy’s Annual Cricket Tournament 🎬\n \n #Ecofy #GreenFinance #EcofyTribe #Teamwork #WorkCulture #BeyondTheWorkplace #Cricket", "Post Link": "https://www.linkedin.com/feed/update/urn:li:activity:7406289907952041984", "Format": "Video", "Campaign reach": 1354.0}, {"Type": "Organic", "Campaign type": "Video Views", "Post title": "From asking endless questions to confidently taking the lead, that’s what growth at Ecofy looks like 🌱\n \n Want to be a part of the #EcofyTribe? Apply Now👉 https://bit.ly/47xekco\n \n #Ecofy #GreenFinance #EcofyTribe #NewJoinee #EmployeeReels", "Post Link": "https://www.linkedin.com/feed/update/urn:li:activity:7393975814993887233", "Format": "Video", "Campaign reach": 1124.0}, {"Type": "Organic", "Campaign type": "Video Views", "Post title": "You think it’s just another regular day at work… and then the social media team walks in 😄\n \n One moment you’re working, and the next you’re the ‘main character’ in a reel\n \n Has this ever happened to you?\n \n #Ecofy #GreenFinance #EcofyTribe #GreenUpgrade #WorkplaceFun #OfficeReels #OfficeLife #WorkplaceHumor #CaughtOnCamera #TeamFun", "Post Link": "https://www.linkedin.com/feed/update/urn:li:activity:7372237567590686720", "Format": "Video", "Campaign reach": 969.0}, {"Type": "Organic", "Campaign type": "Engagement", "Post title": "The #EcofyTribe brought festive cheer to our Christmas celebration this year🎄\n \n From Secret Santa 🎁 to fun games 🎯 it was all about sharing joy and celebrating together.\n \n We at Ecofy wish you a joyful holiday season filled with warmth, cheer, and moments that truly matter 🎉⛄\n \n #Ecofy #GreenFinance #OfficeChristmas #ChristmasAtWork #TeamCulture #EndOfYearCelebrations", "Post Link": "https://www.linkedin.com/feed/update/urn:li:activity:7410263720154767360", "Format": "Static", "Campaign reach": 5529.0}, {"Type": "Organic", "Campaign type": "Engagement", "Post title": "The #EcofyTribe celebrated Independence Day with pride, togetherness, and fun.\n \n 🇮🇳 From wearing traditional attire, to a lively game of housie, celebrations like these remind us of the joy of coming together as one.\n \n #Ecofy #IndependenceDay #GreenFinance #SustainableFuture #PrideAndProgress #TogetherWeGrow", "Post Link": "https://www.linkedin.com/feed/update/urn:li:activity:7362083168528531456", "Format": "Static", "Campaign reach": 3652.0}, {"Type": "Organic", "Campaign type": "Engagement", "Post title": "Celebrating the festival of lights with the #EcofyTribe\n \n From diya painting to festive fun, it was a reminder that together, we make every celebration brighter🌱\n \n Here’s to spreading joy and positivity this festive season. \n \n The #EcofyTribe wishes you a warm, joyful, and prosperous Diwali\n \n #Ecofy #GreenFinance #HarSapnaKhaasHai #Diwali2025 #FestivalOfLights", "Post Link": "https://www.linkedin.com/feed/update/urn:li:activity:7385993957253611520", "Format": "Static", "Campaign reach": 3001.0}, {"Type": "Organic", "Campaign type": "Engagement", "Post title": "Ecofy, at Ather Energy’s quarterly regional partner meet for Andhra Pradesh and Telangana, unveiled schemes with a focus on aligned growth opportunities and financing solutions.\n \n These initiatives aim to support partners as they plan for the road ahead.\n \n Together, we’re advancing the transition to cleaner mobility, through sustainable, future-ready solutions.\n \n Anshuman Singh | Garvit Minocha | Kevin Henry | Kailash Rathi | Sumeru Shah | Shivam Agrawal | Sundaresh DT\n \n #Ecofy #AtherEnergy #GreenFinance #EVFinancing #SustainableMobility", "Post Link": "https://www.linkedin.com/feed/update/urn:li:activity:7420445953800904704", "Format": "Static", "Campaign reach": 1619.0}, {"Type": "Organic", "Campaign type": "Engagement", "Post title": "We are pleased to share the launch of our Independence Day scheme in Maharashtra, in collaboration with Tata Power Solar.\n \n Delivering on our promise to make sustainable assets affordable, this scheme enables buying rooftop solar setups with a down payment of just Rs.1947/-\n \n We are excited to push the boundaries of financing, advance the PM - Surya Ghar: Muft Bijli Yojana, and solarize homes through this collaboration.\n \n Start your solar journey today with Ecofy: https://bit.ly/4oAYaFe\n \n Rajashree Nambiar | Govind Sankaranarayanan | Dr. Pravin Sinha | Sanjay Banga | Shivram Bikkina | Nikita Kanodia | PREM KUMAR NAYAK | Kailash Rathi | Swapnil Wakade | TATA POWER SOLAR pvt ltd | Tata Power Renewable Energy Limited\n \n #Ecofy #GreenFinance #GreenUpgrade #SustainableLiving #CleanEnergy #PMsuryaGhar #RooftopSolar #ResidentialSolar #Maharashtra #RenewableEnergy #SolarSavings #GoSolarIndia", "Post Link": "https://www.linkedin.com/feed/update/urn:li:activity:7362005975270092801", "Format": "Static", "Campaign reach": 1338.0}, {"Type": "Organic", "Campaign type": "Engagement Rate", "Post title": "The #EcofyTribe brought festive cheer to our Christmas celebration this year🎄\n \n From Secret Santa 🎁 to fun games 🎯 it was all about sharing joy and celebrating together.\n \n We at Ecofy wish you a joyful holiday season filled with warmth, cheer, and moments that truly matter 🎉⛄\n \n #Ecofy #GreenFinance #OfficeChristmas #ChristmasAtWork #TeamCulture #EndOfYearCelebrations", "Post Link": "https://www.linkedin.com/feed/update/urn:li:activity:7410263720154767360", "Format": "Static", "Campaign reach": 0.8008}, {"Type": "Organic", "Campaign type": "Engagement Rate", "Post title": "The #EcofyTribe celebrated Independence Day with pride, togetherness, and fun.\n \n 🇮🇳 From wearing traditional attire, to a lively game of housie, celebrations like these remind us of the joy of coming together as one.\n \n #Ecofy #IndependenceDay #GreenFinance #SustainableFuture #PrideAndProgress #TogetherWeGrow", "Post Link": "https://www.linkedin.com/feed/update/urn:li:activity:7362083168528531456", "Format": "Static", "Campaign reach": 0.5967}, {"Type": "Organic", "Campaign type": "Engagement Rate", "Post title": "An Electric 3-Wheeler boosts your fleet’s productivity and helps you save on petrol costs.\n \n Ecofy helps you scale your fleet with:\n ⚡ Instant Approvals\n 💻 100% Digital Process\n 🏦 Financing up to 90% of your vehicle’s on-road price\n \n Learn more here → https://shorturl.at/185xD\n \n [EV 3-Wheeler Loan, Fleet Financing For EVs, Green Mobility Financing, Affordable EV Loans]\n \n #Ecofy #GreenFinance #EVLoans #ElectrifyYourFleet #EV3Wheeler #GreenFleet #GreenUpgrade", "Post Link": "https://www.linkedin.com/feed/update/urn:li:activity:7415639810419138560", "Format": "Static", "Campaign reach": 0.4199}, {"Type": "Organic", "Campaign type": "Engagement Rate", "Post title": "Celebrating the festival of lights with the #EcofyTribe\n \n From diya painting to festive fun, it was a reminder that together, we make every celebration brighter🌱\n \n Here’s to spreading joy and positivity this festive season. \n \n The #EcofyTribe wishes you a warm, joyful, and prosperous Diwali\n \n #Ecofy #GreenFinance #HarSapnaKhaasHai #Diwali2025 #FestivalOfLights", "Post Link": "https://www.linkedin.com/feed/update/urn:li:activity:7385993957253611520", "Format": "Static", "Campaign reach": 0.3708}, {"Type": "Organic", "Campaign type": "Engagement Rate", "Post title": "Running an MSME as a first-time business owner and figuring out how to finance its growth?\n \n 👉 Swipe to discover your go-to guide to understanding the basics of working capital loans.\n \n Finance your business with Ecofy’s SME Working Capital Loans, get started here: https://shorturl.at/Xx6lX\n \n #Ecofy #GreenFinance #MSMEs #SmartFinancing #BusinessTips #WorkingCapital", "Post Link": "https://www.linkedin.com/feed/update/urn:li:activity:7367745467889205249", "Format": "Static", "Campaign reach": 0.3175}], "kpi": [{"Total Spend": 8780295.0, "Total Impressions": 102460.0, "Total Clicks": 305915.0, "CTR": 85.69485653}]};
+var DM = D.dataMaster || [];
+var PD = D.paidData1 || {meta:[],instagram:[],linkedin:[]};
+var ORG = D.organicData || {facebook:[],instagram:[],linkedin:[]};
+var WEB = D.websiteData || [];
+var INF = D.influencers || [];
+var LA  = D.linkedinAnalysis || [];
+var KPI = D.kpi || [];
+
+// ══ CHARTS REGISTRY ══════════════════════════════════════════════
+var CH = {};
+function mc(id, cfg) {
+  if (CH[id]) { CH[id].destroy(); delete CH[id]; }
+  var el = document.getElementById(id);
+  if (el) CH[id] = new Chart(el, cfg);
+}
+
+// ══ FILTER STATE ══════════════════════════════════════════════════
+var F = { period:'month', month:'January', quarter:'all', platform:'all', week:'all' };
+var ACTIVE_TAB = 'overview';
+
+// ══ FILTER LOGIC ══════════════════════════════════════════════════
+function filterDM() {
+  return DM.filter(function(r){
+    var ok = true;
+    if (F.month !== 'all')    ok = ok && (r['Month '] || r['Month']) === F.month;
+    if (F.platform !== 'all') ok = ok && r['Platform'] === F.platform;
+    if (F.week !== 'all')     ok = ok && r['Week'] === F.week;
+    return ok;
+  });
+}
+function filterPaid(arr) {
+  return arr.filter(function(r){
+    if (F.week !== 'all') {
+      var d = r['Date'] ? r['Date'].toString() : '';
+      var day = parseInt(d.split('/')[0]) || 0;
+      var wkNum = F.week.replace('Week ','');
+      var wkDay = (parseInt(wkNum)-1)*7+1;
+      return day >= wkDay && day < wkDay+7;
+    }
+    return true;
+  });
+}
+function filterOrgByDate(arr) { return arr; }
+
+// ══ HELPERS ══════════════════════════════════════════════════════
+function n(v){ if(typeof v==='string'){v=v.replace(/[₹,\s]/g,'');} return parseFloat(v) || 0; }
+function pn(v){ return isNaN(parseFloat(v)) ? '-' : parseFloat(v).toLocaleString('en-IN'); }
+function fmt(v, p){
+  v = n(v); if(p===undefined) p='₹';
+  if(v>=10000000) return p+(v/10000000).toFixed(2)+'Cr';
+  if(v>=100000)   return p+(v/100000).toFixed(2)+'L';
+  if(v>=1000)     return p+(n(v)/1000).toFixed(1)+'K';
+  return p+Math.round(v).toLocaleString('en-IN');
+}
+function pct(a,b){ return b?((a/b)*100).toFixed(1)+'%':'0%'; }
+function arr(rows, key){ return rows.map(function(r){ return n(r[key]); }); }
+function sum(rows, key){ return rows.reduce(function(a,r){ return a+n(r[key]); }, 0); }
+function mkCard(l,v,ch,cls,kc,src){
+  return '<div class="kcard" style="--kc:'+kc+'"><div class="klbl">'+l+'</div><div class="kval">'+v+'</div><div class="kch '+(cls||'up')+'">'+ch+'</div>'+(src?'<div class="ksrc">'+src+'</div>':'')+'</div>';
+}
+function mkHead(cols){ return cols.map(function(c){return '<th>'+c+'</th>';}).join(''); }
+
+// ══ RENDER ALL — called on every filter change + tab switch ═══════
+function renderAll() {
+  updateSummary();
+  var tab = ACTIVE_TAB;
+  if (tab==='overview')          renderOverview();
+  if (tab==='data_master')       renderDataMaster();
+  if (tab==='paid_meta')         renderPaidMeta();
+  if (tab==='paid_ig')           renderPaidIG();
+  if (tab==='paid_li')           renderPaidLI();
+  if (tab==='organic')           renderOrganic();
+  if (tab==='website')           renderWebsite();
+  if (tab==='linkedin_analysis') renderLinkedInAnalysis();
+  if (tab==='influencers')       renderInfluencers();
+  if (tab==='kpi')               renderKPI();
+}
+
+function updateSummary() {
+  var parts = [
+    F.month !== 'all' ? F.month + ' 2026' : (F.quarter !== 'all' ? F.quarter : 'All Time'),
+    F.platform !== 'all' ? F.platform : 'All Platforms',
+    F.week !== 'all' ? F.week : '',
+  ].filter(Boolean);
+  document.getElementById('fsumm').textContent = parts.join(' · ');
+}
+
+// ══ OVERVIEW ══════════════════════════════════════════════════════
+function renderOverview() {
+  var rows = filterDM();
+  var totalSpend   = sum(rows,'Spend');
+  var totalImpr    = sum(rows,'Impressions');
+  var totalClicks  = sum(rows,'Clicks');
+  var totalResults = sum(rows,'Results');
+  var avgCTR = totalImpr ? (totalClicks/totalImpr*100).toFixed(2) : 0;
+
+  var totalLPV = sum(PD.meta, 'Website Traffic');
+  var totalReach = sum(PD.meta, 'Reach') + sum(PD.instagram, 'Reach') + sum(PD.linkedin, 'Impression');
+  var totalNetSpend = sum(PD.meta,'Net Spend') + sum(PD.instagram,'Net Spend') + sum(PD.linkedin,'Net Spend');
+  document.getElementById('ov-kpis').innerHTML =
+    mkCard('Landing Page Views', fmt(totalLPV,''), '▲ Meta Website Traffic', 'up','#1b5e20','Paid Meta') +
+    mkCard('Net Spend',          fmt(totalNetSpend), '▲ All platforms', 'up','#0a66c2','FB + IG + LI') +
+    mkCard('Total Reach',        fmt(totalReach,''), '▲ Paid campaigns', 'up','#e65100','FB + IG + LI');
+
+  document.getElementById('ov-fsub').textContent = (F.month!=='all'?F.month+' 2026':'All time')+' · All platforms';
+
+  // Funnel
+  var totSp2 = sum(DM,'Spend'), totIm2=sum(DM,'Impressions'), totCl2=sum(DM,'Clicks'), totRs2=sum(DM,'Results');
+  var fdata = [
+    {l:'Total impressions', v:totIm2, pct:100,   c:'#1877f2', s:'Meta+LI'},
+    {l:'Total clicks',      v:totCl2, pct:+(totIm2?(totCl2/totIm2*100).toFixed(1):0), c:'#0a66c2', s:'Meta'},
+    {l:'Total results',     v:totRs2, pct:+(totIm2?(totRs2/totIm2*100).toFixed(2):0), c:'#2e7d32', s:'All'},
+    {l:'IG engagements',    v:sum(DM.filter(function(r){return r['Platform']==='IG';}), 'Results'),
+                             pct:1.2, c:'#e1306c', s:'Instagram'},
+    {l:'LI engagements',    v:sum(DM.filter(function(r){return r['Platform']==='LinkedIn';}), 'Results'),
+                             pct:0.8, c:'#7986cb', s:'LinkedIn'},
+  ];
+  var maxF = fdata[0].v || 1;
+  document.getElementById('ov-funnel').innerHTML = fdata.map(function(f){
+    var w = Math.max(4, (f.v/maxF)*100);
+    return '<div class="frow"><div class="flab">'+f.l+'</div>' +
+      '<div class="ftrack"><div class="fbar" style="width:'+w+'%;background:'+f.c+'">' +
+      (f.v>=1000?Math.round(f.v).toLocaleString('en-IN'):Math.round(f.v))+'</div></div>' +
+      '<div class="fpct">'+f.pct+'%</div><div class="fsrc2" style="color:'+f.c+'">'+f.s+'</div></div>';
+  }).join('');
+
+  // Trend chart
+  var weeks = ['Week 1','Week 2','Week 3','Week 4'];
+  var spArr=[], rsArr=[], imArr=[];
+  weeks.forEach(function(w){
+    var wr = DM.filter(function(r){ return r['Week']===w; });
+    spArr.push(Math.round(sum(wr,'Spend')));
+    rsArr.push(Math.round(sum(wr,'Results')));
+    imArr.push(Math.round(sum(wr,'Impressions')/1000));
+  });
+  mc('ov-trend',{type:'line',data:{labels:weeks,datasets:[
+    {label:'Spend',data:spArr,borderColor:'#1b5e20',backgroundColor:'rgba(27,94,32,.08)',tension:.4,fill:true,yAxisID:'y'},
+    {label:'Results',data:rsArr,borderColor:'#e65100',backgroundColor:'rgba(230,81,0,.07)',tension:.4,fill:true,yAxisID:'y2'},
+    {label:'Impr K',data:imArr,borderColor:'#0a66c2',borderDash:[4,3],tension:.4,fill:false,yAxisID:'y2'},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{y:{position:'left',ticks:{callback:function(v){return '₹'+Math.round(v/1000)+'K'},font:{size:9}},grid:{color:'#f5f5f5'}},
+            y2:{position:'right',grid:{drawOnChartArea:false},ticks:{font:{size:9}}}}}});
+
+  // Platform breakdown
+  var plats = [{n:'FB & IG',c:'#1877f2'},{n:'IG',c:'#e1306c'},{n:'LinkedIn',c:'#0a66c2'}];
+  var maxS = Math.max.apply(null, plats.map(function(p){ return sum(DM.filter(function(r){return r['Platform']===p.n;}), 'Spend') || 0; })) || 1;
+  document.getElementById('ov-plat').innerHTML = plats.map(function(p){
+    var pr = DM.filter(function(r){ return r['Platform']===p.n; });
+    var sp = sum(pr,'Spend'); var rs = sum(pr,'Results');
+    return '<div class="trow"><div class="tname"><div class="tdot" style="background:'+p.c+'"></div>'+p.n+'</div>' +
+      '<div class="mbar-w"><div class="mbar-i" style="width:'+((sp/maxS)*100)+'%;background:'+p.c+'"></div></div>' +
+      '<div style="font-size:10px;color:#555">'+fmt(sp)+'</div>' +
+      '<div style="font-size:10px;color:#bbb">'+fmt(rs,'')+'R</div></div>';
+  }).join('');
+
+  // Campaign breakdown
+  var camps = ['Website Traffic','Post Engagement','Engagement'];
+  document.getElementById('ov-camp').innerHTML = camps.map(function(camp, ci){
+    var cr = DM.filter(function(r){ return r['Campaign']===camp || (camp==='Post Engagement'&&r['Campaign']==='Post Engagement') || (camp==='Engagement'&&r['Platform']==='LinkedIn'); });
+    var sp = sum(cr,'Spend'), rs = sum(cr,'Results');
+    var bg = ['#e3f2fd','#fce4ec','#e8eaf6'][ci];
+    var col = ['#0d47a1','#880e4f','#1a237e'][ci];
+    return '<div class="orow"><span class="obadge" style="background:'+bg+';color:'+col+'">'+camp+'</span>' +
+      '<div style="text-align:right"><div style="font-weight:700">'+fmt(sp)+'</div><div style="color:#bbb;font-size:9px">'+Math.round(rs).toLocaleString()+'</div></div></div>';
+  }).join('');
+
+  // Week rows
+  document.getElementById('ov-weeks').innerHTML = weeks.map(function(w){
+    var wr = DM.filter(function(r){ return r['Week']===w; });
+    var fbig = DM.filter(function(r){ return r['Week']===w && r['Platform']==='FB & IG'; });
+    var ig2  = DM.filter(function(r){ return r['Week']===w && r['Platform']==='IG'; });
+    var li   = DM.filter(function(r){ return r['Week']===w && r['Platform']==='LinkedIn'; });
+    return '<div class="wrow"><span style="font-weight:700;color:#1b5e20;min-width:55px">'+w+'</span>' +
+      '<span style="color:#1877f2;font-size:10px">'+fmt(sum(fbig,'Spend'))+'</span>' +
+      '<span style="color:#e1306c;font-size:10px">'+fmt(sum(ig2,'Spend'))+'</span>' +
+      '<span style="color:#0a66c2;font-size:10px">'+fmt(sum(li,'Spend'))+'</span>' +
+      '<span style="font-weight:700">'+fmt(sum(wr,'Spend'))+'</span></div>';
+  }).join('');
+
+  // Stacked bar: impressions
+  mc('ov-impr',{type:'bar',data:{labels:weeks,datasets:[
+    {label:'FB & IG',data:weeks.map(function(w){return Math.round(sum(DM.filter(function(r){return r['Week']===w&&r['Platform']==='FB & IG';}), 'Impressions'));}),backgroundColor:'#1877f2',borderRadius:3,stack:'s'},
+    {label:'IG',     data:weeks.map(function(w){return Math.round(sum(DM.filter(function(r){return r['Week']===w&&r['Platform']==='IG';}), 'Impressions'));}),backgroundColor:'#e1306c',borderRadius:3,stack:'s'},
+    {label:'LinkedIn',data:weeks.map(function(w){return Math.round(sum(DM.filter(function(r){return r['Week']===w&&r['Platform']==='LinkedIn';}), 'Impressions'));}),backgroundColor:'#0a66c2',borderRadius:3,stack:'s'},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top',labels:{font:{size:9},boxWidth:9}}},
+    scales:{x:{stacked:true,ticks:{font:{size:9}}},y:{stacked:true,ticks:{callback:function(v){return Math.round(v/1000)+'K'},font:{size:9}},grid:{color:'#f5f5f5'}}}}});
+
+  mc('ov-res',{type:'bar',data:{labels:weeks,datasets:[
+    {label:'FB & IG',data:weeks.map(function(w){return Math.round(sum(DM.filter(function(r){return r['Week']===w&&r['Platform']==='FB & IG';}), 'Results'));}),backgroundColor:'#1877f2',borderRadius:3,stack:'s'},
+    {label:'IG',     data:weeks.map(function(w){return Math.round(sum(DM.filter(function(r){return r['Week']===w&&r['Platform']==='IG';}), 'Results'));}),backgroundColor:'#e1306c',borderRadius:3,stack:'s'},
+    {label:'LinkedIn',data:weeks.map(function(w){return Math.round(sum(DM.filter(function(r){return r['Week']===w&&r['Platform']==='LinkedIn';}), 'Results'));}),backgroundColor:'#0a66c2',borderRadius:3,stack:'s'},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top',labels:{font:{size:9},boxWidth:9}}},
+    scales:{x:{stacked:true,ticks:{font:{size:9}}},y:{stacked:true,ticks:{font:{size:9}},grid:{color:'#f5f5f5'}}}}});
+
+  document.getElementById('ov-insights').innerHTML = [
+    {c:'ig',i:'↑',t:'Facebook+Instagram drives highest traffic — Website Traffic campaign CTR: '+(totalImpr>0?(totalClicks/totalImpr*100).toFixed(2):3.0)+'%'},
+    {c:'ig',i:'★',t:'Instagram post engagement is highest among IG campaigns — focus Reel-first creative strategy'},
+    {c:'ia',i:'!',t:'LinkedIn CPR is higher than Meta — review LinkedIn creative and targeting for SME segment'},
+    {c:'ib',i:'i',t:'Week 3 & 4 consistently show highest impressions — consider front-loading budget mid-month'},
+    {c:'ib',i:'i',t:'Organic data shows strong LinkedIn impressions — complement with more paid on same audience'},
+  ].map(function(r){ return '<div class="irow"><div class="iico '+r.c+'">'+r.i+'</div><span>'+r.t+'</span></div>'; }).join('');
+}
+
+// ══ DATA MASTER TAB ═══════════════════════════════════════════════
+function renderDataMaster() {
+  var rows = filterDM();
+  var sp=sum(rows,'Spend'), im=sum(rows,'Impressions'), cl=sum(rows,'Clicks'), rs=sum(rows,'Results');
+  document.getElementById('dm-kpis').innerHTML =
+    mkCard('Spend',fmt(sp),'All filtered rows','up','#1b5e20','DATA_MASTER') +
+    mkCard('Impressions',fmt(im,''),'Filtered','up','#0a66c2','DATA_MASTER') +
+    mkCard('Results',fmt(rs,''),'Filtered','up','#e65100','DATA_MASTER');
+
+  document.getElementById('dm-sub').textContent = rows.length+' rows — Filter: '+(F.month!=='all'?F.month:'All months')+' / '+(F.platform!=='all'?F.platform:'All platforms')+' / '+(F.week!=='all'?F.week:'All weeks');
+
+  var weeks=['Week 1','Week 2','Week 3','Week 4'];
+  var plats=['FB & IG','IG','LinkedIn'];
+  var pCols=['#1877f2','#e1306c','#0a66c2'];
+  mc('dm-spend',{type:'bar',data:{labels:weeks,datasets:plats.map(function(p,pi){
+    return {label:p,data:weeks.map(function(w){return Math.round(sum(DM.filter(function(r){return r['Week']===w&&r['Platform']===p;}), 'Spend'));}),backgroundColor:pCols[pi],borderRadius:3,stack:'s'};
+  })},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top',labels:{font:{size:9},boxWidth:9}}},
+    scales:{x:{stacked:true,ticks:{font:{size:9}}},y:{stacked:true,ticks:{callback:function(v){return '₹'+Math.round(v/1000)+'K'},font:{size:9}},grid:{color:'#f5f5f5'}}}}});
+  mc('dm-results',{type:'bar',data:{labels:weeks,datasets:plats.map(function(p,pi){
+    return {label:p,data:weeks.map(function(w){return Math.round(sum(DM.filter(function(r){return r['Week']===w&&r['Platform']===p;}), 'Results'));}),backgroundColor:pCols[pi],borderRadius:3,stack:'s'};
+  })},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top',labels:{font:{size:9},boxWidth:9}}},
+    scales:{x:{stacked:true,ticks:{font:{size:9}}},y:{stacked:true,ticks:{font:{size:9}},grid:{color:'#f5f5f5'}}}}});
+
+  var hdrs=['Week','Month','Platform','Campaign','Spend','Impressions','Clicks','Results'];
+  document.getElementById('dm-thead').innerHTML = mkHead(hdrs);
+  document.getElementById('dm-tbody').innerHTML = rows.map(function(r){
+    var pb = r['Platform']==='FB & IG'?'pfb':r['Platform']==='IG'?'pig':'pli';
+    return '<tr><td>'+r['Week']+'</td><td>'+r['Month ']+'</td><td><span class="'+pb+'">'+r['Platform']+'</span></td><td>'+r['Campaign']+'</td>' +
+      '<td>'+fmt(r['Spend'])+'</td><td>'+fmt(n(r['Impressions']),'')+'</td><td>'+pn(r['Clicks'])+'</td><td>'+pn(r['Results'])+'</td></tr>';
+  }).join('');
+}
+
+// ══ PAID META TAB ═════════════════════════════════════════════════
+function renderPaidMeta() {
+  var rows = filterPaid(PD.meta);
+  var sp=sum(rows,'Net Spend'), im=sum(rows,'Impression'), cl=sum(rows,'Clicks'), lpv=sum(rows,'Website Traffic');
+  document.getElementById('pm-kpis').innerHTML =
+    mkCard('Net Spend',fmt(sp),'Meta Website Traffic','up','#1877f2','Paid Data - 1') +
+    mkCard('Impressions',fmt(im,''),'Daily total','up','#1877f2','Paid Data - 1') +
+    mkCard('Clicks',fmt(cl,''),'Daily clicks','up','#1877f2','Paid Data - 1') +
+    mkCard('LP Views',fmt(lpv,''),'Website Traffic','up','#1877f2','Paid Data - 1');
+
+  var dates = rows.slice(0,14).map(function(r){ return r['Date']||''; });
+  mc('pm-spend',{type:'bar',data:{labels:dates,datasets:[{label:'Spend',data:rows.slice(0,14).map(function(r){return n(r['Net Spend']);}),backgroundColor:'#1877f2',borderRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{font:{size:8},maxRotation:45}},y:{ticks:{callback:function(v){return '₹'+Math.round(v/1000)+'K'},font:{size:9}},grid:{color:'#f5f5f5'}}}}});
+  mc('pm-ctr',{type:'line',data:{labels:dates,datasets:[
+    {label:'CTR',data:rows.slice(0,14).map(function(r){return +(n(r['CTR'])*100).toFixed(2);}),borderColor:'#0d47a1',tension:.4,fill:false,yAxisID:'y',pointRadius:3},
+    {label:'LP Views',data:rows.slice(0,14).map(function(r){return n(r['Website Traffic']);}),borderColor:'#4caf50',tension:.4,fill:false,yAxisID:'y2',pointRadius:3},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top',labels:{font:{size:9},boxWidth:9}}},
+    scales:{y:{position:'left',ticks:{callback:function(v){return v+'%'},font:{size:9}},grid:{color:'#f5f5f5'}},y2:{position:'right',grid:{drawOnChartArea:false},ticks:{font:{size:9}}}}}});
+
+  var hdrs2=['Date','Promotion Type','Objective','Net Spend','Impressions','Reach','Clicks','CTR','LP Views','CPLPV','Avg Time','Bounce Rate'];
+  var keys2=['Date','Promotion Type','Objective','Net Spend','Impression','Reach','Clicks','CTR','Website Traffic','CPLPV','Avg. Time Spend','Bounce Rate'];
+  document.getElementById('pm-thead').innerHTML = mkHead(hdrs2);
+  document.getElementById('pm-tbody').innerHTML = rows.map(function(r){
+    return '<tr>'+keys2.map(function(k){
+      var v = r[k]; if(k==='Net Spend') v=fmt(n(v)); else if(k==='CTR') v=(n(v)*100).toFixed(2)+'%';
+      return '<td>'+v+'</td>';}).join('')+'</tr>';
+  }).join('');
+}
+
+// ══ PAID IG TAB ════════════════════════════════════════════════════
+function renderPaidIG() {
+  var rows = filterPaid(PD.instagram);
+  var sp=sum(rows,'Net Spend'), im=sum(rows,'Impression'), eng=sum(rows,'Engagement'), fol=sum(rows,'Follwers Gain');
+  document.getElementById('pi-kpis').innerHTML =
+    mkCard('Net Spend',fmt(sp),'Instagram Engagement','up','#e1306c','Paid Data - 1') +
+    mkCard('Impressions',fmt(im,''),'Daily total','up','#e1306c','Paid Data - 1') +
+    mkCard('Engagements',fmt(eng,''),'Interactions','up','#e1306c','Paid Data - 1') +
+    mkCard('Followers',fmt(fol,''),'Gained','up','#e1306c','Paid Data - 1');
+
+  var dates = rows.slice(0,14).map(function(r){ return r['Date']||''; });
+  mc('pi-eng',{type:'bar',data:{labels:dates,datasets:[{label:'Engagement',data:rows.slice(0,14).map(function(r){return n(r['Engagement']);}),backgroundColor:'#e1306c',borderRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{font:{size:8},maxRotation:45}},y:{ticks:{font:{size:9}},grid:{color:'#f5f5f5'}}}}});
+  mc('pi-fol',{type:'line',data:{labels:dates,datasets:[{label:'Followers',data:rows.slice(0,14).map(function(r){return n(r['Follwers Gain']);}),borderColor:'#9c27b0',backgroundColor:'rgba(156,39,176,.07)',tension:.4,fill:true,pointRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{font:{size:8},maxRotation:45}},y:{ticks:{font:{size:9}},grid:{color:'#f5f5f5'}}}}});
+
+  var hIG=['Date','Objective','Spend','Impressions','Reach','Engagement','CPE','ER','Video plays','Followers'];
+  var kIG=['Date','Objective','Net Spend','Impression','Reach','Engagement','CPE','ER','Video plays','Follwers Gain'];
+  document.getElementById('pi-thead').innerHTML = mkHead(hIG);
+  document.getElementById('pi-tbody').innerHTML = rows.map(function(r){
+    return '<tr>'+kIG.map(function(k){
+      var v=r[k]; if(k==='Net Spend') v=fmt(n(v)); else if(k==='ER') v=(n(v)*100).toFixed(2)+'%';
+      return '<td>'+v+'</td>';}).join('')+'</tr>';
+  }).join('');
+}
+
+// ══ PAID LI TAB ════════════════════════════════════════════════════
+function renderPaidLI() {
+  var rows = filterPaid(PD.linkedin);
+  var sp=sum(rows,'Net Spend'), im=sum(rows,'Impression'), eng=sum(rows,'Engagement'), fol=sum(rows,'Follwers Gain');
+  document.getElementById('pl-kpis').innerHTML =
+    mkCard('Net Spend',fmt(sp),'LinkedIn Engagement','up','#0a66c2','Paid Data - 1') +
+    mkCard('Impressions',fmt(im,''),'Daily total','up','#0a66c2','Paid Data - 1') +
+    mkCard('Engagements',fmt(eng,''),'CPE-based','up','#0a66c2','Paid Data - 1') +
+    mkCard('Followers',fmt(fol,''),'Gained','up','#0a66c2','Paid Data - 1');
+
+  var dates=rows.slice(0,14).map(function(r){return r['Date']||'';});
+  mc('pl-impr',{type:'bar',data:{labels:dates,datasets:[{label:'Impressions',data:rows.slice(0,14).map(function(r){return n(r['Impression']);}),backgroundColor:'#0a66c2',borderRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{font:{size:8},maxRotation:45}},y:{ticks:{callback:function(v){return Math.round(v/1000)+'K'},font:{size:9}},grid:{color:'#f5f5f5'}}}}});
+  mc('pl-eng',{type:'line',data:{labels:dates,datasets:[
+    {label:'Engagement',data:rows.slice(0,14).map(function(r){return n(r['Engagement']);}),borderColor:'#0a66c2',tension:.4,fill:false,yAxisID:'y',pointRadius:3},
+    {label:'Followers',data:rows.slice(0,14).map(function(r){return n(r['Follwers Gain']);}),borderColor:'#7986cb',tension:.4,fill:false,yAxisID:'y2',pointRadius:3},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top',labels:{font:{size:9},boxWidth:9}}},
+    scales:{y:{position:'left',ticks:{font:{size:9}},grid:{color:'#f5f5f5'}},y2:{position:'right',grid:{drawOnChartArea:false},ticks:{font:{size:9}}}}}});
+
+  var hLI=['Date','Objective','Impressions','Deal Type','Engagement','CPE','ER','Followers','Spend'];
+  var kLI=['Date','Objective','Impression','Deal Type','Engagement','CPE','ER','Follwers Gain','Net Spend'];
+  document.getElementById('pl-thead').innerHTML = mkHead(hLI);
+  document.getElementById('pl-tbody').innerHTML = rows.map(function(r){
+    return '<tr>'+kLI.map(function(k){
+      var v=r[k]; if(k==='Net Spend') v=fmt(n(v)); else if(k==='ER') v=(n(v)*100).toFixed(3)+'%';
+      return '<td>'+v+'</td>';}).join('')+'</tr>';
+  }).join('');
+}
+
+// ══ ORGANIC TAB ═════════════════════════════════════════════════
+function renderOrganic() {
+  var fb=ORG.facebook, ig=ORG.instagram, li=ORG.linkedin;
+  var fbIm=sum(fb,'Impressions'), igIm=sum(ig,'Impressions'), liIm=sum(li,'Impressions');
+  var fbFol=sum(fb,'Followers Added'), igFol=sum(ig,'Followers Added');
+  document.getElementById('org-kpis').innerHTML =
+    mkCard('FB Impressions',fmt(fbIm,''),'Facebook organic','up','#1877f2','Organic Data') +
+    mkCard('IG Impressions',fmt(igIm,''),'Instagram organic','up','#e1306c','Organic Data') +
+    mkCard('LI Impressions',fmt(liIm,''),'LinkedIn organic','up','#0a66c2','Organic Data');
+
+  var d14=function(arr){return arr.slice(0,14).map(function(r){return r['Date']||'';});};
+  mc('org-fb',{type:'line',data:{labels:d14(fb),datasets:[
+    {label:'Impressions',data:fb.slice(0,14).map(function(r){return n(r['Impressions']);}),borderColor:'#1877f2',tension:.4,fill:false,yAxisID:'y',pointRadius:2},
+    {label:'Engagement',data:fb.slice(0,14).map(function(r){return n(r['Engagement (Without VV)']);}),borderColor:'#4caf50',tension:.4,fill:false,yAxisID:'y2',pointRadius:2},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top',labels:{font:{size:9},boxWidth:9}}},
+    scales:{x:{ticks:{font:{size:8},maxRotation:45}},y:{position:'left',ticks:{font:{size:9}},grid:{color:'#f5f5f5'}},y2:{position:'right',grid:{drawOnChartArea:false},ticks:{font:{size:9}}}}}});
+  mc('org-ig',{type:'line',data:{labels:d14(ig),datasets:[
+    {label:'Impressions',data:ig.slice(0,14).map(function(r){return n(r['Impressions']);}),borderColor:'#e1306c',tension:.4,fill:false,yAxisID:'y',pointRadius:2},
+    {label:'Video Views',data:ig.slice(0,14).map(function(r){return n(r['Video Views']);}),borderColor:'#9c27b0',tension:.4,fill:false,yAxisID:'y2',pointRadius:2},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top',labels:{font:{size:9},boxWidth:9}}},
+    scales:{x:{ticks:{font:{size:8},maxRotation:45}},y:{position:'left',ticks:{font:{size:9}},grid:{color:'#f5f5f5'}},y2:{position:'right',grid:{drawOnChartArea:false},ticks:{font:{size:9}}}}}});
+  mc('org-li',{type:'bar',data:{labels:d14(li),datasets:[{label:'Impressions',data:li.slice(0,14).map(function(r){return n(r['Impressions']);}),backgroundColor:'#0a66c2',borderRadius:2}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{font:{size:8},maxRotation:45}},y:{ticks:{callback:function(v){return Math.round(v/1000)+'K'},font:{size:9}},grid:{color:'#f5f5f5'}}}}});
+
+  var erData=[sum(fb,'ER')/Math.max(fb.length,1),sum(ig,'ER')/Math.max(ig.length,1),sum(li,'ER')/Math.max(li.length,1)];
+  mc('org-er',{type:'bar',data:{labels:['Facebook','Instagram','LinkedIn'],datasets:[{label:'Avg ER',data:erData.map(function(v){return +(v*100).toFixed(2);}),backgroundColor:['#1877f2','#e1306c','#0a66c2'],borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{y:{ticks:{callback:function(v){return v+'%'},font:{size:9}},grid:{color:'#f5f5f5'}}}}});
+  mc('org-fol',{type:'bar',data:{labels:['Facebook','Instagram'],datasets:[{label:'Followers Added',data:[fbFol,igFol],backgroundColor:['#1877f2','#e1306c'],borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{font:{size:9}},grid:{color:'#f5f5f5'}}}}});
+
+  var maxLen = Math.max(fb.length, ig.length, li.length);
+  document.getElementById('org-tbody').innerHTML = Array.from({length:Math.min(maxLen,30)}).map(function(_,i){
+    var f=fb[i]||{}, g=ig[i]||{}, l=li[i]||{};
+    return '<tr><td>'+(f['Date']||g['Date']||l['Date']||'')+'</td>' +
+      '<td>'+pn(f['Impressions'])+'</td><td>'+pn(f['Reach'])+'</td><td>'+(n(f['ER'])*100).toFixed(2)+'%</td><td>'+pn(f['Followers Added'])+'</td>' +
+      '<td>'+pn(g['Impressions'])+'</td><td>'+pn(g['Reach'])+'</td><td>'+(n(g['ER'])*100).toFixed(2)+'%</td><td>'+pn(g['Followers Added'])+'</td>' +
+      '<td>'+pn(l['Impressions'])+'</td><td>'+pn(l['Engagement (Without VV)'])+'</td><td>'+(n(l['ER'])*100).toFixed(2)+'%</td><td>'+pn(l['Followers Added'])+'</td></tr>';
+  }).join('');
+}
+
+// ══ WEBSITE TAB ═════════════════════════════════════════════════
+function renderWebsite() {
+  var rows = WEB;
+  var totUsers=sum(rows,'Total users'), totSess=sum(rows,'Sessions'), totEng=sum(rows,'Engaged sessions');
+  var avgER=(sum(rows,'Engagement rate')/Math.max(rows.length,1)*100).toFixed(1);
+  document.getElementById('web-kpis').innerHTML =
+    mkCard('Total Users',fmt(totUsers,''),'All channels','up','#1b5e20','GA4') +
+    mkCard('Sessions',fmt(totSess,''),'All channels','up','#0a66c2','GA4') +
+    mkCard('Engaged Sessions',fmt(totEng,''),'All channels','up','#2e7d32','GA4') +
+    mkCard('Avg Engagement Rate',avgER+'%','Across channels','up','#e65100','GA4');
+
+  var labels=rows.map(function(r){return (r['Session primary channel group (Default Channel Group)']||'').split(' ').slice(0,2).join(' ');});
+  var sessions=rows.map(function(r){return n(r['Sessions']);});
+  var ers=rows.map(function(r){return +(n(r['Engagement rate'])*100).toFixed(1);});
+  mc('web-sess',{type:'bar',data:{labels:labels,datasets:[{label:'Sessions',data:sessions,backgroundColor:'#2e7d32',borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},
+      scales:{x:{ticks:{font:{size:9}},grid:{color:'#f5f5f5'}},y:{ticks:{font:{size:9}}}}}});
+  mc('web-er',{type:'bar',data:{labels:labels,datasets:[{label:'ER %',data:ers,backgroundColor:'#1877f2',borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},
+      scales:{x:{ticks:{callback:function(v){return v+'%'},font:{size:9}},grid:{color:'#f5f5f5'}},y:{ticks:{font:{size:9}}}}}});
+
+  var maxSess = Math.max.apply(null,sessions)||1;
+  document.getElementById('web-channels').innerHTML = rows.map(function(r,i){
+    var ch=r['Session primary channel group (Default Channel Group)']||'';
+    var s=n(r['Sessions']), er=(n(r['Engagement rate'])*100).toFixed(1);
+    return '<div class="ch-row"><div class="ch-name">'+ch+'</div>' +
+      '<div class="ch-bar-w"><div class="ch-bar-i" style="width:'+((s/maxSess)*100)+'%"></div></div>' +
+      '<div class="ch-val">'+s.toLocaleString()+'</div>' +
+      '<div class="ch-rate">'+er+'%</div></div>';
+  }).join('');
+}
+
+// ══ LINKEDIN ANALYSIS TAB ════════════════════════════════════════
+function renderLinkedInAnalysis() {
+  var rows = LA.filter(function(r){ return r['Type'] && r['Campaign type']; });
+  var totalReach=sum(rows,'Campaign reach');
+  var paid=rows.filter(function(r){return r['Type']==='Paid';});
+  var organic=rows.filter(function(r){return r['Type']==='Organic';});
+  document.getElementById('la-kpis').innerHTML =
+    mkCard('Total Posts',rows.length,'Paid + Organic','up','#0a66c2','LinkedIn') +
+    mkCard('Total Reach',fmt(totalReach,''),'All posts','up','#0a66c2','LinkedIn') +
+    mkCard('Paid Posts',paid.length,'Sponsored','up','#1a237e','LinkedIn') +
+    mkCard('Organic Posts',organic.length,'Non-sponsored','up','#2e7d32','LinkedIn');
+
+  var types={};
+  rows.forEach(function(r){ var t=r['Campaign type']||'Other'; types[t]=(types[t]||0)+n(r['Campaign reach']); });
+  var tKeys=Object.keys(types), tVals=tKeys.map(function(k){return types[k];});
+  mc('la-reach',{type:'doughnut',data:{labels:tKeys,datasets:[{data:tVals,backgroundColor:['#0a66c2','#1976d2','#42a5f5','#90caf9','#1b5e20'],borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:10},boxWidth:10}}}}});
+  var fmts={};
+  rows.forEach(function(r){ var f=r['Format']||'Other'; fmts[f]=(fmts[f]||0)+1; });
+  mc('la-fmt',{type:'bar',data:{labels:Object.keys(fmts),datasets:[{label:'Posts',data:Object.values(fmts),backgroundColor:'#0a66c2',borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{font:{size:9}},grid:{color:'#f5f5f5'}}}}});
+
+  document.getElementById('la-tbody').innerHTML = rows.map(function(r){
+    var badge=r['Type']==='Paid'?'<span class="sg">Paid</span>':'<span class="sw">Organic</span>';
+    var link=r['Post Link']?'<a href="'+r['Post Link']+'" target="_blank" style="color:#0a66c2;font-size:10px">View</a>':'-';
+    return '<tr><td>'+badge+'</td><td>'+r['Campaign type']+'</td><td>'+r['Format']+'</td>' +
+      '<td>'+fmt(n(r['Campaign reach']),'')+'</td><td>'+link+'</td></tr>';
+  }).join('');
+}
+
+// ══ INFLUENCERS TAB ══════════════════════════════════════════════
+function renderInfluencers() {
+  var rows = INF;
+  var totalCost=rows.reduce(function(a,r){
+    var c=(r['Cost']||'').toString().replace(/[₹,\s]/g,''); return a+parseFloat(c)||a;
+  },0);
+  var totalPaidImpr=sum(rows,'paidImpr');
+  var totalOrgReach=sum(rows,'organicReach');
+  document.getElementById('inf-kpis').innerHTML =
+    mkCard('Total Influencers',rows.length,'Active','up','#e65100','Influencers') +
+    mkCard('Total Paid Spend',fmt(totalCost),'All influencers','up','#e65100','Influencers') +
+    mkCard('Paid Impressions',fmt(totalPaidImpr,''),'Boosted posts','up','#0a66c2','Influencers') +
+    mkCard('Organic Reach',fmt(totalOrgReach,''),'Organic only','up','#2e7d32','Influencers');
+
+  var names=rows.map(function(r){return (r['Influencer Name']||'').slice(0,14);});
+  mc('inf-views',{type:'bar',data:{labels:names,datasets:[
+    {label:'Planned',data:rows.map(function(r){return n(r['Planned Views']);}),backgroundColor:'rgba(230,81,0,.3)',borderRadius:3},
+    {label:'Achieved',data:rows.map(function(r){return n(r['Achieved Views']);}),backgroundColor:'#e65100',borderRadius:3},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top',labels:{font:{size:9},boxWidth:9}}},
+    scales:{x:{ticks:{font:{size:8},maxRotation:45}},y:{ticks:{callback:function(v){return Math.round(v/1000)+'K'},font:{size:9}},grid:{color:'#f5f5f5'}}}}});
+  mc('inf-spend',{type:'bar',data:{labels:names,datasets:[{label:'Paid Spend',data:rows.map(function(r){return n(r['paidSpent']);}),backgroundColor:'#0a66c2',borderRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{font:{size:8},maxRotation:45}},y:{ticks:{callback:function(v){return '₹'+Math.round(v/1000)+'K'},font:{size:9}},grid:{color:'#f5f5f5'}}}}});
+
+  document.getElementById('inf-cards').innerHTML = rows.map(function(r){
+    var cost=(r['Cost']||'').toString();
+    return '<div class="inf-card">' +
+      '<div class="inf-name">@'+(r['Influencer Name']||'')+'</div>' +
+      '<div class="inf-date">Posted: '+(r['Date Posted']||'')+'</div>' +
+      '<div class="inf-row"><span class="inf-label">Cost</span><span class="inf-val">'+cost+'</span></div>' +
+      '<div class="inf-row"><span class="inf-label">Planned views</span><span class="inf-val">'+pn(r['Planned Views'])+'</span></div>' +
+      '<div class="inf-row"><span class="inf-label">Achieved views</span><span class="inf-val">'+pn(r['Achieved Views'])+'</span></div>' +
+      '<div class="inf-row"><span class="inf-label">Organic reach</span><span class="inf-val">'+pn(r['organicReach'])+'</span></div>' +
+      '<div class="inf-row"><span class="inf-label">Paid impressions</span><span class="inf-val">'+pn(r['paidImpr'])+'</span></div>' +
+      '<div class="inf-row"><span class="inf-label">Paid ER</span><span class="inf-val">'+pn(r['paidER'])+'</span></div>' +
+      '<div class="inf-row"><span class="inf-label">Followers added</span><span class="inf-val">'+pn(r['followerAdded'])+'</span></div>' +
+      (r['Video Link']?'<div style="margin-top:8px"><a href="'+r['Video Link']+'" target="_blank" style="color:#e65100;font-size:11px;font-weight:700">▶ View Reel</a></div>':'') +
+    '</div>';
+  }).join('');
+}
+
+// ══ KPI TAB ══════════════════════════════════════════════════════
+function renderKPI() {
+  var rows = KPI;
+  document.getElementById('kpi-cards').innerHTML =
+    mkCard('Total Spend',fmt(n(rows[0]&&rows[0]['Total Spend'])),'From KPI sheet','up','#1b5e20','KPI') +
+    mkCard('Total Impressions',fmt(n(rows[0]&&rows[0]['Total Impressions']),''),'From KPI sheet','up','#0a66c2','KPI') +
+    mkCard('Total Clicks',fmt(n(rows[0]&&rows[0]['Total Clicks']),''),'From KPI sheet','up','#e65100','KPI');
+
+  var sp=n(rows[0]&&rows[0]['Total Spend']), im=n(rows[0]&&rows[0]['Total Impressions']), cl=n(rows[0]&&rows[0]['Total Clicks']);
+  mc('kpi-chart',{type:'bar',data:{labels:['Total Spend','Total Impressions (K)','Total Clicks (K)'],datasets:[{
+    label:'Values',
+    data:[sp/1000, im/1000, cl/1000],
+    backgroundColor:['#1b5e20','#0a66c2','#e65100'],borderRadius:6
+  }]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{y:{ticks:{font:{size:9}},grid:{color:'#f5f5f5'}}}}});
+
+  document.getElementById('kpi-tbody').innerHTML = rows.length && rows[0] ? Object.keys(rows[0]).map(function(k){
+    return '<tr><td style="font-weight:600">'+k+'</td><td>'+pn(rows[0][k])+'</td></tr>';
+  }).join('') : '<tr><td colspan="2" style="color:#bbb;text-align:center">No KPI data</td></tr>';
+}
+
+// ══ NAVIGATION & FILTER EVENTS ════════════════════════════════════
+function showTab(name, btn) {
+  document.querySelectorAll('.xtab').forEach(function(b){ b.classList.remove('on'); });
+  btn.classList.add('on');
+  document.querySelectorAll('.panel').forEach(function(p){ p.classList.remove('on'); });
+  document.getElementById('p-'+name).classList.add('on');
+  ACTIVE_TAB = name;
+  renderAll();
+}
+
+function setP(p, btn) {
+  document.querySelectorAll('.pb').forEach(function(b){ b.classList.remove('on'); });
+  btn.classList.add('on');
+  F.period = p;
+  document.getElementById('crange').classList.toggle('show', p==='custom');
+  if (p==='week')    { F.week='all'; document.getElementById('fW').value='all'; }
+  if (p==='quarter') { document.getElementById('fQ').value='Q1'; F.quarter='Q1'; F.month='all'; document.getElementById('fM').value='all'; }
+  if (p==='all')     { document.getElementById('fM').value='all'; document.getElementById('fQ').value='all'; F.month='all'; F.quarter='all'; F.week='all'; document.getElementById('fW').value='all'; }
+  applyF();
+}
+
+function applyF() {
+  F.month    = document.getElementById('fM').value;
+  F.quarter  = document.getElementById('fQ').value;
+  F.platform = document.getElementById('fP').value;
+  F.week     = document.getElementById('fW').value;
+  renderAll();
+}
+
+// ══ COMPARATIVE WEEK VIEW ════════════════════════════════════════
+function renderCompareSection() {
+  var sec = document.getElementById('ov-compare-section');
+  if (!sec) return;
+  // Only show compare section on Overview tab
+  if (ACTIVE_TAB !== 'overview') { sec.innerHTML=''; return; }
+
+  if (F.period === 'week') {
+    // Show all 4 weeks side by side in a comparative grid
+    var weeks = ['Week 1','Week 2','Week 3','Week 4'];
+    var plats = [{n:'FB & IG',c:'#1877f2'},{n:'IG',c:'#e1306c'},{n:'LinkedIn',c:'#0a66c2'}];
+    var html = '<div style="background:#fff;border-radius:10px;border:1px solid #e8e8e8;padding:16px;margin-bottom:0">';
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">';
+    html += '<div style="font-size:13px;font-weight:700;color:#1a1a1a">Weekly comparison — all 4 weeks</div>';
+    html += '<div style="font-size:10px;color:#bbb">Spend · Impressions · Results · LPV per week</div></div>';
+    // Comparative 4-column grid
+    html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">';
+    weeks.forEach(function(wk) {
+      var wRows = DM.filter(function(r){ return r['Week']===wk; });
+      var sp   = sum(wRows,'Spend');
+      var im   = sum(wRows,'Impressions');
+      var rs   = sum(wRows,'Results');
+      var metaRows = PD.meta.filter(function(r){
+        var d=r['Date']||''; var day=parseInt(d.split('/')[0])||0;
+        var wn=parseInt(wk.replace('Week ',''));
+        return day>=(wn-1)*7+1 && day<wn*7+1;
+      });
+      var lpv = sum(metaRows,'Website Traffic');
+      var reach= sum(metaRows,'Reach');
+      var netSp= sum(metaRows,'Net Spend');
+      // Platform breakdown for this week
+      var platBreak = plats.map(function(p){
+        var psp = sum(wRows.filter(function(r){return r['Platform']===p.n;}), 'Spend');
+        return '<div style="display:flex;align-items:center;gap:5px;margin-bottom:4px;font-size:10px">' +
+          '<div style="width:8px;height:8px;border-radius:50%;background:'+p.c+'"></div>' +
+          '<span style="color:#777;min-width:52px">'+p.n+'</span>' +
+          '<span style="font-weight:600">'+fmt(psp)+'</span></div>';
+      }).join('');
+      html += '<div style="background:#f8fdf8;border-radius:8px;padding:14px;border:1px solid #e0f0e0">';
+      html += '<div style="font-size:12px;font-weight:700;color:#1b5e20;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #e0f0e0">'+wk+'</div>';
+      html += '<div style="margin-bottom:10px">'+platBreak+'</div>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">';
+      html += '<div style="background:#fff;border-radius:6px;padding:8px;border:1px solid #e8e8e8"><div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px">Net Spend</div><div style="font-size:15px;font-weight:700;color:#1b5e20">'+fmt(netSp)+'</div></div>';
+      html += '<div style="background:#fff;border-radius:6px;padding:8px;border:1px solid #e8e8e8"><div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px">Reach</div><div style="font-size:15px;font-weight:700;color:#0a66c2">'+fmt(reach,'')+'</div></div>';
+      html += '<div style="background:#fff;border-radius:6px;padding:8px;border:1px solid #e8e8e8"><div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px">LP Views</div><div style="font-size:15px;font-weight:700;color:#e65100">'+fmt(lpv,'')+'</div></div>';
+      html += '<div style="background:#fff;border-radius:6px;padding:8px;border:1px solid #e8e8e8"><div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px">Impressions</div><div style="font-size:15px;font-weight:700;color:#6a1b9a">'+fmt(im,'')+'</div></div>';
+      html += '</div>';
+      html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid #e0f0e0;display:flex;justify-content:space-between;font-size:10px">';
+      html += '<span style="color:#777">Results</span><span style="font-weight:700">'+Math.round(rs).toLocaleString('en-IN')+'</span></div>';
+      html += '</div>';
+    });
+    html += '</div>';
+    // Add comparison bar chart
+    html += '<div style="margin-top:14px;position:relative;height:180px"><canvas id="week-compare-chart"></canvas></div>';
+    html += '</div>';
+    sec.innerHTML = html;
+    // Draw chart after DOM update
+    setTimeout(function(){
+      mc('week-compare-chart',{type:'bar',
+        data:{labels:weeks,datasets:[
+          {label:'Net Spend (₹)',data:weeks.map(function(w){return Math.round(sum(PD.meta.filter(function(r){var d=r['Date']||'';var day=parseInt(d.split('/')[0])||0;var wn=parseInt(w.replace('Week ',''));return day>=(wn-1)*7+1&&day<wn*7+1;}),'Net Spend'));}),backgroundColor:'rgba(27,94,32,0.8)',borderRadius:4,yAxisID:'y'},
+          {label:'LP Views',data:weeks.map(function(w){return Math.round(sum(PD.meta.filter(function(r){var d=r['Date']||'';var day=parseInt(d.split('/')[0])||0;var wn=parseInt(w.replace('Week ',''));return day>=(wn-1)*7+1&&day<wn*7+1;}),'Website Traffic'));}),backgroundColor:'rgba(230,81,0,0.7)',borderRadius:4,yAxisID:'y2'},
+          {label:'Reach',data:weeks.map(function(w){return Math.round(sum(PD.meta.filter(function(r){var d=r['Date']||'';var day=parseInt(d.split('/')[0])||0;var wn=parseInt(w.replace('Week ',''));return day>=(wn-1)*7+1&&day<wn*7+1;}),'Reach'));}),type:'line',borderColor:'#0a66c2',tension:.4,fill:false,yAxisID:'y2',pointRadius:5,pointBackgroundColor:'#0a66c2'},
+        ]},
+        options:{responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{display:true,position:'top',labels:{font:{size:9},boxWidth:9}}},
+          scales:{y:{position:'left',ticks:{callback:function(v){return '₹'+Math.round(v/1000)+'K'},font:{size:9}},grid:{color:'#f5f5f5'}},
+                  y2:{position:'right',grid:{drawOnChartArea:false},ticks:{font:{size:9}}}}}});
+    },50);
+
+  } else if (F.period === 'month' || F.month !== 'all') {
+    // Show month breakdown: months available in data
+    var months = ['January'];
+    var monthColors = {January:'#1b5e20'};
+    var html = '<div style="background:#fff;border-radius:10px;border:1px solid #e8e8e8;padding:16px;margin-bottom:0">';
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">';
+    html += '<div style="font-size:13px;font-weight:700;color:#1a1a1a">Monthly breakdown — January 2026</div>';
+    html += '<div style="font-size:10px;color:#bbb">Week-by-week within month · Net Spend · Reach · LP Views</div></div>';
+    // monthly week breakdown with platform split
+    var weeks = ['Week 1','Week 2','Week 3','Week 4'];
+    html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">';
+    weeks.forEach(function(wk){
+      var wRows = DM.filter(function(r){ return r['Week']===wk; });
+      var metaRows = PD.meta.filter(function(r){
+        var d=r['Date']||''; var day=parseInt(d.split('/')[0])||0;
+        var wn=parseInt(wk.replace('Week ',''));
+        return day>=(wn-1)*7+1 && day<wn*7+1;
+      });
+      var igRows = PD.instagram.filter(function(r){
+        var d=r['Date']||''; var day=parseInt(d.split('/')[0])||0;
+        var wn=parseInt(wk.replace('Week ',''));
+        return day>=(wn-1)*7+1 && day<wn*7+1;
+      });
+      var liRows = PD.linkedin.filter(function(r){
+        var d=r['Date']||''; var day=parseInt(d.split('/')[0])||0;
+        var wn=parseInt(wk.replace('Week ',''));
+        return day>=(wn-1)*7+1 && day<wn*7+1;
+      });
+      var totalNetSp = sum(metaRows,'Net Spend')+sum(igRows,'Net Spend')+sum(liRows,'Net Spend');
+      var totalReach = sum(metaRows,'Reach')+sum(igRows,'Reach');
+      var totalLPV = sum(metaRows,'Website Traffic');
+      var totalImpr = sum(wRows,'Impressions');
+      var plts = [
+        {n:'FB & IG',c:'#1877f2',sp:sum(DM.filter(function(r){return r['Week']===wk&&r['Platform']==='FB & IG';}),'Spend')},
+        {n:'IG',     c:'#e1306c',sp:sum(DM.filter(function(r){return r['Week']===wk&&r['Platform']==='IG';}),'Spend')},
+        {n:'LinkedIn',c:'#0a66c2',sp:sum(DM.filter(function(r){return r['Week']===wk&&r['Platform']==='LinkedIn';}),'Spend')},
+      ];
+      html += '<div style="background:#f8fdf8;border-radius:8px;padding:14px;border:1px solid #e0f0e0">';
+      html += '<div style="font-size:12px;font-weight:700;color:#1b5e20;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #e0f0e0">'+wk+'</div>';
+      // mini bar chart
+      var maxSp = Math.max.apply(null,plts.map(function(p){return p.sp||0}))||1;
+      html += '<div style="margin-bottom:10px">';
+      plts.forEach(function(p){
+        var w = Math.max(4,(p.sp/maxSp)*100);
+        html += '<div style="display:flex;align-items:center;gap:5px;margin-bottom:5px">';
+        html += '<div style="font-size:9px;color:#777;width:44px">'+p.n+'</div>';
+        html += '<div style="flex:1;background:#f0f0f0;border-radius:3px;height:8px"><div style="width:'+w+'%;height:8px;border-radius:3px;background:'+p.c+'"></div></div>';
+        html += '<div style="font-size:9px;font-weight:600;width:40px;text-align:right">'+fmt(p.sp)+'</div></div>';
+      });
+      html += '</div>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">';
+      html += '<div style="background:#fff;border-radius:5px;padding:6px 8px;border:1px solid #e8e8e8"><div style="font-size:8px;color:#aaa;text-transform:uppercase;letter-spacing:.03em">Net Spend</div><div style="font-size:13px;font-weight:700;color:#1b5e20">'+fmt(totalNetSp)+'</div></div>';
+      html += '<div style="background:#fff;border-radius:5px;padding:6px 8px;border:1px solid #e8e8e8"><div style="font-size:8px;color:#aaa;text-transform:uppercase;letter-spacing:.03em">Reach</div><div style="font-size:13px;font-weight:700;color:#0a66c2">'+fmt(totalReach,'')+'</div></div>';
+      html += '<div style="background:#fff;border-radius:5px;padding:6px 8px;border:1px solid #e8e8e8"><div style="font-size:8px;color:#aaa;text-transform:uppercase;letter-spacing:.03em">LP Views</div><div style="font-size:13px;font-weight:700;color:#e65100">'+fmt(totalLPV,'')+'</div></div>';
+      html += '<div style="background:#fff;border-radius:5px;padding:6px 8px;border:1px solid #e8e8e8"><div style="font-size:8px;color:#aaa;text-transform:uppercase;letter-spacing:.03em">Impressions</div><div style="font-size:13px;font-weight:700;color:#6a1b9a">'+fmt(totalImpr,'')+'</div></div>';
+      html += '</div></div>';
+    });
+    html += '</div>';
+    // Add trend chart
+    html += '<div style="margin-top:14px;position:relative;height:180px"><canvas id="month-compare-chart"></canvas></div>';
+    html += '</div>';
+    sec.innerHTML = html;
+    setTimeout(function(){
+      mc('month-compare-chart',{type:'bar',
+        data:{labels:weeks,datasets:[
+          {label:'Net Spend',data:weeks.map(function(w){
+            var mn=parseInt(w.replace('Week ',''));
+            var mr=PD.meta.filter(function(r){var d=r['Date']||'';var day=parseInt(d.split('/')[0])||0;return day>=(mn-1)*7+1&&day<mn*7+1;});
+            var ir=PD.instagram.filter(function(r){var d=r['Date']||'';var day=parseInt(d.split('/')[0])||0;return day>=(mn-1)*7+1&&day<mn*7+1;});
+            var lr=PD.linkedin.filter(function(r){var d=r['Date']||'';var day=parseInt(d.split('/')[0])||0;return day>=(mn-1)*7+1&&day<mn*7+1;});
+            return Math.round(sum(mr,'Net Spend')+sum(ir,'Net Spend')+sum(lr,'Net Spend'));
+          }),backgroundColor:'rgba(27,94,32,0.8)',borderRadius:4,yAxisID:'y'},
+          {label:'LP Views',data:weeks.map(function(w){
+            var mn=parseInt(w.replace('Week ',''));
+            var mr=PD.meta.filter(function(r){var d=r['Date']||'';var day=parseInt(d.split('/')[0])||0;return day>=(mn-1)*7+1&&day<mn*7+1;});
+            return Math.round(sum(mr,'Website Traffic'));
+          }),backgroundColor:'rgba(230,81,0,0.7)',borderRadius:4,yAxisID:'y2'},
+          {label:'Reach',data:weeks.map(function(w){
+            var mn=parseInt(w.replace('Week ',''));
+            var mr=PD.meta.filter(function(r){var d=r['Date']||'';var day=parseInt(d.split('/')[0])||0;return day>=(mn-1)*7+1&&day<mn*7+1;});
+            var ir=PD.instagram.filter(function(r){var d=r['Date']||'';var day=parseInt(d.split('/')[0])||0;return day>=(mn-1)*7+1&&day<mn*7+1;});
+            return Math.round(sum(mr,'Reach')+sum(ir,'Reach'));
+          }),type:'line',borderColor:'#0a66c2',tension:.4,fill:false,yAxisID:'y2',pointRadius:5,pointBackgroundColor:'#0a66c2'},
+        ]},
+        options:{responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{display:true,position:'top',labels:{font:{size:9},boxWidth:9}}},
+          scales:{y:{position:'left',ticks:{callback:function(v){return '₹'+Math.round(v/1000)+'K'},font:{size:9}},grid:{color:'#f5f5f5'}},
+                  y2:{position:'right',grid:{drawOnChartArea:false},ticks:{font:{size:9}}}}}});
+    },50);
+  } else {
+    sec.innerHTML = '';
+  }
+}
+
+// ══ BOOT ══════════════════════════════════════════════════════════
+// Patch renderAll to also call renderCompareSection
+var _origRenderAll = renderAll;
+renderAll = function() {
+  _origRenderAll();
+  renderCompareSection();
+};
+renderAll();
+</script>
+</body>
+</html>
